@@ -1,0 +1,117 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────
+// Enums
+// ─────────────────────────────────────────────────────────
+
+enum UserRole {
+  member
+  admin
+}
+
+enum ActivityType {
+  event
+  ride
+}
+
+enum DifficultyLevel {
+  easy
+  moderate
+  hard
+  extreme
+}
+
+enum RegistrationStatus {
+  registered
+  waitlisted
+  cancelled
+}
+
+// ─────────────────────────────────────────────────────────
+// Models
+// ─────────────────────────────────────────────────────────
+
+model User {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  fullName     String   @map("full_name")
+  phone        String?
+  role         UserRole @default(member)
+  avatarUrl    String?  @map("avatar_url")
+  bio          String?
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz()
+
+  activities    Activity[]     @relation("ActivityCreator")
+  registrations Registration[]
+  comments      Comment[]
+
+  @@map("users")
+}
+
+model Activity {
+  id                 String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  createdBy          String           @map("created_by") @db.Uuid
+  type               ActivityType
+  title              String
+  description        String?
+  startsAt           DateTime         @map("starts_at") @db.Timestamptz()
+  endsAt             DateTime?        @map("ends_at") @db.Timestamptz()
+  startLocation      String?          @map("start_location")
+  startLat           Decimal?         @map("start_lat") @db.Decimal(9, 6)
+  startLng           Decimal?         @map("start_lng") @db.Decimal(9, 6)
+  approxKm           Int?             @map("approx_km")
+  difficulty         DifficultyLevel?
+  maxParticipants    Int?             @map("max_participants")
+  routeUrl           String?          @map("route_url")
+  isCancelled        Boolean          @default(false) @map("is_cancelled")
+  cancellationReason String?          @map("cancellation_reason")
+  createdAt          DateTime         @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt          DateTime         @updatedAt @map("updated_at") @db.Timestamptz()
+
+  creator       User           @relation("ActivityCreator", fields: [createdBy], references: [id])
+  registrations Registration[]
+  comments      Comment[]
+
+  @@map("activities")
+}
+
+model Registration {
+  id           String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  activityId   String             @map("activity_id") @db.Uuid
+  userId       String             @map("user_id") @db.Uuid
+  status       RegistrationStatus @default(registered)
+  note         String?
+  registeredAt DateTime           @default(now()) @map("registered_at") @db.Timestamptz()
+  updatedAt    DateTime           @updatedAt @map("updated_at") @db.Timestamptz()
+
+  activity Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id])
+
+  @@unique([activityId, userId], name: "uq_one_registration")
+  @@map("registrations")
+}
+
+model Comment {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  activityId String   @map("activity_id") @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  body       String
+  isDeleted  Boolean  @default(false) @map("is_deleted")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz()
+
+  activity Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id])
+
+  @@map("comments")
+}

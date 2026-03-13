@@ -1,0 +1,42 @@
+# Node / npm
+node_modules/
+npm-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Build output
+dist/
+.next/
+out/
+
+# Environment variables — never commit real secrets
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Prisma generated client
+src/backend/node_modules/.prisma/
+
+# Orval generated output (regenerated from Swagger at runtime)
+src/frontend/src/api/generated/
+
+# IDE
+.vscode/settings.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Vim / editor swap files
+*.swp
+*.swo
+*~
+
+# TypeScript build info
+*.tsbuildinfo

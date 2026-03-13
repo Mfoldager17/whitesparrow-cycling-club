@@ -1,0 +1,23 @@
+{
+  "name": "whitesparrow-cycling-club",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "src/backend",
+    "src/frontend"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev --workspace=src/backend\" \"npm run dev --workspace=src/frontend\"",
+    "build": "npm run build --workspace=src/backend && npm run build --workspace=src/frontend",
+    "generate:api": "npm run generate --workspace=src/frontend",
+    "postinstall": "rm -rf node_modules/@stoplight/spectral-core/node_modules/ajv"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  },
+  "overrides": {
+    "@stoplight/spectral-core": {
+      "ajv": "^8.17.1"
+    }
+  }
+}
