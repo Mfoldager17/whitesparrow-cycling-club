@@ -12,7 +12,7 @@ export default function AdminUsersPage() {
   const { mutateAsync: updateUser, isPending } = useUsersControllerAdminUpdate();
   const [selected, setSelected] = useState<string | null>(null);
 
-  const users = data?.data ?? [];
+  const users = data ?? [];
   if (isLoading) return <PageSpinner />;
 
   const selectedUser = users.find((u) => u.id === selected);

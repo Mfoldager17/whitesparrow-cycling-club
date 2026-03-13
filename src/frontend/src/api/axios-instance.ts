@@ -37,11 +37,11 @@ export const axiosInstance = <T>(
   options?: AxiosRequestConfig,
 ): Promise<T> => {
   const source = axios.CancelToken.source();
-  const promise = instance<T>({
+  const promise = instance<{ data: T }>({
     ...config,
     ...options,
     cancelToken: source.token,
-  }).then(({ data }) => data as T);
+  }).then(({ data }) => data.data as T);
 
   // Allow React Query to cancel in-flight requests
   // @ts-expect-error cancel is added dynamically

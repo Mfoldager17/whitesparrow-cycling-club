@@ -27,12 +27,12 @@ export default function ProfilePage() {
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    values: data?.data
+    values: data
       ? {
-          fullName: data.data.fullName,
-          phone: data.data.phone ?? '',
-          bio: data.data.bio ?? '',
-          avatarUrl: data.data.avatarUrl ?? '',
+          fullName: data.fullName,
+          phone: data.phone ?? '',
+          bio: data.bio ?? '',
+          avatarUrl: data.avatarUrl ?? '',
         }
       : undefined,
   });
@@ -50,7 +50,7 @@ export default function ProfilePage() {
     });
   }
 
-  const profile = data?.data;
+  const profile = data;
 
   return (
     <div className="max-w-xl mx-auto px-4 py-10 sm:px-6">

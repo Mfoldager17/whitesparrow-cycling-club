@@ -31,11 +31,9 @@ export default function ActivitiesPage() {
   const [currentMonth, setCurrentMonth] = useState(() => startOfMonth(new Date()));
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
-  const { data, isLoading, refetch } = useActivitiesControllerFindAll({});
+  const { data: activities, isLoading, refetch } = useActivitiesControllerFindAll();
   const { mutateAsync: createActivity, isPending } = useActivitiesControllerCreate();
   const { data: myRegsData } = useMyRegistrationsControllerGetMyRegistrations();
-
-  const activities = (Array.isArray(data) ? data : ((data as any)?.data ?? [])) as NonNullable<typeof data>;
 
   const myRegs = (Array.isArray(myRegsData) ? myRegsData : ((myRegsData as any)?.data ?? [])) as Array<{ activityId: string; status: string; startsAt?: string }>;
 
@@ -45,20 +43,20 @@ export default function ActivitiesPage() {
   );
 
   const activityDates = useMemo(
-    () => activities.map((a) => new Date(a.startsAt)),
+    () => activities?.map((a) => new Date(a.startsAt)),
     [activities],
   );
 
   const registeredDates = useMemo(
     () =>
-      activities
+      (activities ?? [])
         .filter((a) => registeredActivityIds.has(a.id))
         .map((a) => new Date(a.startsAt)),
     [activities, registeredActivityIds],
   );
 
   const visibleActivities = useMemo(() => {
-    const sorted = [...activities].sort(
+    const sorted = [...(activities ?? [])].sort(
       (a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime(),
     );
     if (selectedDate) {
@@ -132,7 +130,7 @@ export default function ActivitiesPage() {
         <CalendarGrid
           year={currentMonth.getFullYear()}
           month={currentMonth.getMonth()}
-          highlightedDates={activityDates}
+          highlightedDates={activityDates ?? []}
           registeredDates={registeredDates}
           selectedDate={selectedDate}
           onDayClick={handleDayClick}

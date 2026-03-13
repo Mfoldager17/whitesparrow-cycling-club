@@ -29,7 +29,7 @@ export default function LoginPage() {
 
   async function onSubmit(data: FormValues) {
     const res = await mutateAsync({ data });
-    login(res.data.userId, res.data.role, res.data.accessToken, res.data.refreshToken);
+    login(res.userId, res.role, res.accessToken, res.refreshToken);
     router.push('/activities');
   }
 
@@ -44,7 +44,7 @@ export default function LoginPage() {
           </Link>
         </p>
 
-        {error && (
+        {!!error && (
           <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
             Forkert e-mail eller adgangskode.
           </div>

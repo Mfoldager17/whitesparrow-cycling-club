@@ -23,7 +23,7 @@ export default function AdminActivitiesPage() {
   const [cancelId, setCancelId] = useState<string | null>(null);
   const [cancelReason, setCancelReason] = useState('');
 
-  const activities = data?.data ?? [];
+  const activities = data ?? [];
 
   if (isLoading) return <PageSpinner />;
 

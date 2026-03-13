@@ -1,6 +1,6 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import { format } from 'date-fns';
 import { da } from 'date-fns/locale';
 import { useQueryClient } from '@tanstack/react-query';
@@ -25,12 +25,8 @@ import {
   getMyRegistrationsControllerGetMyRegistrationsQueryKey,
 } from '@/api/generated/registrations/registrations';
 
-interface Props {
-  params: { id: string };
-}
-
-export default function ActivityDetailPage({ params }: Props) {
-  const { id } = params;
+export default function ActivityDetailPage() {
+  const { id } = useParams<{ id: string }>();
   const { user, isAdmin } = useAuth();
   const queryClient = useQueryClient();
   const router = useRouter();
