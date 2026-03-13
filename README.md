@@ -7,7 +7,7 @@ Full-stack monorepo for the Whitesparrow Cycling Club platform — a private web
 | Layer    | Technology                                              |
 |----------|---------------------------------------------------------|
 | Backend  | NestJS · Prisma · PostgreSQL · Swagger / OpenAPI        |
-| Frontend | Next.js 14 (App Router) · Tailwind CSS · React Query · Orval |
+| Frontend | Next.js 16 (App Router) · Tailwind CSS · React Query · Orval |
 | Language | TypeScript throughout                                   |
 | Database | PostgreSQL (local via Docker)                           |
 
@@ -186,7 +186,7 @@ cd src/frontend && npm run start
 | Layer    | Technology                                 |
 |----------|--------------------------------------------|
 | Backend  | NestJS · Prisma · PostgreSQL · Swagger     |
-| Frontend | Next.js 14 · Tailwind CSS · React Query · Orval |
+| Frontend | Next.js 16 · Tailwind CSS · React Query · Orval |
 | Language | TypeScript (everywhere)                    |
 
 ## Project Structure
