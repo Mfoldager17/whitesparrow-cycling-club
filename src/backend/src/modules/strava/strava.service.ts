@@ -39,6 +39,7 @@ export class StravaService {
   private readonly clientId: string;
   private readonly clientSecret: string;
   private readonly redirectUri: string;
+  private readonly defaultScope = 'read,activity:read';
 
   constructor(
     private readonly prisma: PrismaService,
@@ -131,7 +132,7 @@ export class StravaService {
         accessToken: data.access_token,
         refreshToken: data.refresh_token,
         expiresAt: new Date(data.expires_at * 1000),
-        scope: 'read,activity:read',
+        scope: this.defaultScope,
         userName: `${data.athlete.firstname} ${data.athlete.lastname}`.trim(),
         userAvatar: data.athlete.profile,
       },
@@ -142,7 +143,7 @@ export class StravaService {
         accessToken: data.access_token,
         refreshToken: data.refresh_token,
         expiresAt: new Date(data.expires_at * 1000),
-        scope: 'read,activity:read',
+        scope: this.defaultScope,
         userName: `${data.athlete.firstname} ${data.athlete.lastname}`.trim(),
         userAvatar: data.athlete.profile,
       },

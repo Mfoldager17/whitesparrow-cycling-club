@@ -3,18 +3,18 @@ CREATE TYPE "OAuthPlatform" AS ENUM ('strava', 'rwgps');
 
 -- Unified OAuth token table (one row per user per platform)
 CREATE TABLE "oauth_tokens" (
-    "id"              UUID            NOT NULL DEFAULT gen_random_uuid(),
-    "user_id"         UUID            NOT NULL,
-    "platform"        "OAuthPlatform" NOT NULL,
-    "external_user_id" TEXT           NOT NULL,
-    "access_token"    TEXT            NOT NULL,
-    "refresh_token"   TEXT,
-    "expires_at"      TIMESTAMPTZ,
-    "scope"           TEXT,
-    "user_name"       TEXT,
-    "user_avatar"     TEXT,
-    "created_at"      TIMESTAMPTZ     NOT NULL DEFAULT now(),
-    "updated_at"      TIMESTAMPTZ     NOT NULL,
+    "id"               UUID            NOT NULL DEFAULT gen_random_uuid(),
+    "user_id"          UUID            NOT NULL,
+    "platform"         "OAuthPlatform" NOT NULL,
+    "external_user_id" TEXT            NOT NULL,
+    "access_token"     TEXT            NOT NULL,
+    "refresh_token"    TEXT,
+    "expires_at"       TIMESTAMPTZ,
+    "scope"            TEXT,
+    "user_name"        TEXT,
+    "user_avatar"      TEXT,
+    "created_at"       TIMESTAMPTZ     NOT NULL DEFAULT now(),
+    "updated_at"       TIMESTAMPTZ     NOT NULL,
 
     CONSTRAINT "oauth_tokens_pkey" PRIMARY KEY ("id")
 );

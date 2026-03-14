@@ -63,7 +63,7 @@ export default function RidewithgpsConnect() {
     <div className="card space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="font-semibold text-gray-900 flex items-center gap-2">
-          <svg viewBox="0 0 24 24" className="w-5 h-5" fill="#FB5A00" aria-hidden={true}>
+          <svg viewBox="0 0 24 24" className="w-5 h-5" fill="#FB5A00" aria-hidden>
             <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 3a7 7 0 1 1 0 14A7 7 0 0 1 12 5zm-1 3v5l4 2.5-.75-1.3L13 13V8h-2z" />
           </svg>
           RideWithGPS
@@ -110,7 +110,7 @@ export default function RidewithgpsConnect() {
             className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white"
             style={{ background: '#FB5A00' }}
           >
-            <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor" aria-hidden={true}>
+            <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor" aria-hidden>
               <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 3a7 7 0 1 1 0 14A7 7 0 0 1 12 5zm-1 3v5l4 2.5-.75-1.3L13 13V8h-2z" />
             </svg>
             Forbind med RideWithGPS
