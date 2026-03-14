@@ -12,10 +12,12 @@ import {
 } from 'date-fns';
 import { da } from 'date-fns/locale';
 import { CalendarGrid } from '@/components/ui/CalendarGrid';
+import { CalendarNav } from '@/components/ui/CalendarNav';
+import { ActivityCard } from '@/components/activities/ActivityCard';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { ActivityTypeBadge, DifficultyBadge, RegistrationStatusBadge } from '@/components/ui/Badge';
 import { useMyRegistrationsControllerGetMyRegistrations } from '@/api/generated/registrations/registrations';
+import { groupByDate } from '@/lib/groupByDate';
 
 export default function MyRidesPage() {
   const [currentMonth, setCurrentMonth] = useState(() => startOfMonth(new Date()));
@@ -56,16 +58,13 @@ export default function MyRidesPage() {
     return monthRegistrations;
   }, [registrations, monthRegistrations, selectedDate]);
 
-  const grouped = useMemo(() => {
-    const map = new Map<string, typeof visibleRegistrations>();
-    for (const r of visibleRegistrations) {
-      if (!r.startsAt) continue;
-      const key = format(new Date(r.startsAt), 'yyyy-MM-dd');
-      if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push(r);
-    }
-    return Array.from(map.entries()).sort((a, b) => b[0].localeCompare(a[0]));
-  }, [visibleRegistrations]);
+  const grouped = useMemo(
+    () =>
+      groupByDate<any>(visibleRegistrations, (r) => r.startsAt).sort((a, b) =>
+        b[0].localeCompare(a[0]),
+      ),
+    [visibleRegistrations],
+  );
 
   const monthKm = monthRegistrations.reduce((sum, r) => sum + (Number(r.approxKm) || 0), 0);
   const totalKm = registrations.reduce((sum, r) => sum + (Number(r.approxKm) || 0), 0);
@@ -82,29 +81,11 @@ export default function MyRidesPage() {
       </div>
 
       <div className="card mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <button
-            onClick={() => {
-              setCurrentMonth((m) => subMonths(m, 1));
-              setSelectedDate(null);
-            }}
-            className="p-2 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors text-xl leading-none"
-          >
-            ‹
-          </button>
-          <h2 className="text-base font-semibold text-gray-800 capitalize">
-            {format(currentMonth, 'MMMM yyyy', { locale: da })}
-          </h2>
-          <button
-            onClick={() => {
-              setCurrentMonth((m) => addMonths(m, 1));
-              setSelectedDate(null);
-            }}
-            className="p-2 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors text-xl leading-none"
-          >
-            ›
-          </button>
-        </div>
+        <CalendarNav
+          currentMonth={currentMonth}
+          onPrev={() => { setCurrentMonth((m) => subMonths(m, 1)); setSelectedDate(null); }}
+          onNext={() => { setCurrentMonth((m) => addMonths(m, 1)); setSelectedDate(null); }}
+        />
 
         <CalendarGrid
           year={currentMonth.getFullYear()}
@@ -179,50 +160,20 @@ export default function MyRidesPage() {
               </div>
 
               <div className="ml-14 space-y-3">
-                {regs.map((reg) => {
-                  const isPast = reg.startsAt ? new Date(reg.startsAt) < new Date() : false;
-                  return (
-                    <Link href={`/activities/${reg.activityId}`} key={reg.id}>
-                      <article
-                        className={`card hover:shadow-md transition-shadow cursor-pointer flex items-center gap-4 ${
-                          isPast ? 'opacity-65' : ''
-                        }`}
-                      >
-                        <div className="flex-1 min-w-0">
-                          <div className="flex flex-wrap gap-1.5 mb-1.5">
-                            <ActivityTypeBadge type={reg.type ?? ''} />
-                            {reg.difficulty && (
-                              <DifficultyBadge difficulty={String(reg.difficulty)} />
-                            )}
-                            {isPast ? (
-                              <span className="badge bg-gray-100 text-gray-500">Overstået</span>
-                            ) : (
-                              reg.registrationStatus && (
-                                <RegistrationStatusBadge
-                                  status={String(reg.registrationStatus)}
-                                />
-                              )
-                            )}
-                          </div>
-                          <h3 className="font-semibold text-gray-900 leading-snug">
-                            {reg.title}
-                          </h3>
-                          <p className="text-sm text-gray-500 mt-0.5">
-                            {reg.startsAt
-                              ? format(new Date(reg.startsAt), 'HH:mm')
-                              : '–'}
-                            {reg.startLocation && ` · ${reg.startLocation}`}
-                          </p>
-                        </div>
-                        {reg.approxKm != null && (
-                          <span className="text-lg font-bold text-brand-700 shrink-0">
-                            {String(reg.approxKm)} km
-                          </span>
-                        )}
-                      </article>
-                    </Link>
-                  );
-                })}
+                {regs.map((reg) => (
+                  <ActivityCard
+                    key={reg.id}
+                    id={reg.activityId}
+                    title={reg.title ?? ''}
+                    type={reg.type ?? ''}
+                    startsAt={reg.startsAt!}
+                    startLocation={reg.startLocation}
+                    approxKm={reg.approxKm != null ? Number(reg.approxKm) : null}
+                    difficulty={reg.difficulty != null ? String(reg.difficulty) : null}
+                    isPast={reg.startsAt ? new Date(reg.startsAt) < new Date() : false}
+                    registrationStatus={reg.registrationStatus != null ? String(reg.registrationStatus) : null}
+                  />
+                ))}
               </div>
             </section>
           ))}
