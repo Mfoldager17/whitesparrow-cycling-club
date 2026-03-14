@@ -9,12 +9,11 @@ import {
   startOfMonth,
   addMonths,
   subMonths,
-  isToday,
 } from 'date-fns';
 import { da } from 'date-fns/locale';
 import { CalendarGrid } from '@/components/ui/CalendarGrid';
 import { CalendarNav } from '@/components/ui/CalendarNav';
-import { ActivityCard } from '@/components/activities/ActivityCard';
+import { ActivityDateList } from '@/components/activities/ActivityDateList';
 import { ActivityForm } from '@/components/activities/ActivityForm';
 import { Modal } from '@/components/ui/Modal';
 import { PageSpinner } from '@/components/ui/Spinner';
@@ -151,53 +150,7 @@ export default function ActivitiesPage() {
           }
         />
       ) : (
-        <div className="space-y-8">
-          {grouped.map(([dateKey, acts]) => (
-            <section key={dateKey}>
-              {/* Date header */}
-              <div className="flex items-center gap-3 mb-3">
-                <div className="flex flex-col items-center justify-center w-11 h-11 rounded-xl bg-brand-600 text-white shrink-0">
-                  <span className="text-[10px] font-semibold leading-none uppercase">
-                    {format(new Date(dateKey), 'MMM', { locale: da })}
-                  </span>
-                  <span className="text-xl font-bold leading-tight">
-                    {format(new Date(dateKey), 'd')}
-                  </span>
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-gray-800 capitalize">
-                    {format(new Date(dateKey), 'EEEE', { locale: da })}
-                  </p>
-                  {isToday(new Date(dateKey)) && (
-                    <span className="text-xs text-brand-600 font-medium">I dag</span>
-                  )}
-                </div>
-              </div>
-
-              {/* Activities for this date */}
-              <div className="ml-14 space-y-3">
-                {acts.map((a) => (
-                  <ActivityCard
-                    key={a.id}
-                    id={a.id}
-                    title={a.title}
-                    type={a.type}
-                    startsAt={a.startsAt}
-                    startLocation={a.startLocation}
-                    approxKm={a.approxKm}
-                    difficulty={a.difficulty}
-                    organizerName={a.organizerName}
-                    registeredCount={a.registeredCount}
-                    waitlistCount={a.waitlistCount}
-                    maxParticipants={a.maxParticipants}
-                    isCancelled={a.isCancelled}
-                    isRegistered={registeredActivityIds.has(a.id)}
-                  />
-                ))}
-              </div>
-            </section>
-          ))}
-        </div>
+        <ActivityDateList grouped={grouped} registeredActivityIds={registeredActivityIds} />
       )}
 
       {/* New activity modal */}
