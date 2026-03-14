@@ -22,7 +22,9 @@ async function bootstrap() {
 
   // ── CORS ────────────────────────────────────────────────
   app.enableCors({
-    origin: process.env.FRONTEND_URL ?? 'http://localhost:3000',
+    origin: process.env.NODE_ENV === 'production'
+      ? (process.env.FRONTEND_URL ?? 'http://localhost:3000')
+      : true, // allow all origins in development (e.g. phone on local network)
     credentials: true,
   });
 
