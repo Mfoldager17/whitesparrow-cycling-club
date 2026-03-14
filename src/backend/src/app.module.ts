@@ -7,6 +7,7 @@ import { ActivitiesModule } from './modules/activities/activities.module';
 import { RegistrationsModule } from './modules/registrations/registrations.module';
 import { CommentsModule } from './modules/comments/comments.module';
 import { StravaModule } from './modules/strava/strava.module';
+import { RidewithgpsModule } from './modules/ridewithgps/ridewithgps.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { StravaModule } from './modules/strava/strava.module';
     RegistrationsModule,
     CommentsModule,
     StravaModule,
+    RidewithgpsModule,
   ],
 })
 export class AppModule {}

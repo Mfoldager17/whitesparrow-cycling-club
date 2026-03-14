@@ -82,6 +82,11 @@ STRAVA_CLIENT_ID=your_strava_client_id
 STRAVA_CLIENT_SECRET=your_strava_client_secret
 STRAVA_REDIRECT_URI=http://localhost:3001/strava/callback
 
+# RideWithGPS OAuth — get credentials from https://ridewithgps.com/api
+RWGPS_CLIENT_ID=your_rwgps_client_id
+RWGPS_CLIENT_SECRET=your_rwgps_client_secret
+RWGPS_REDIRECT_URI=http://localhost:3001/ridewithgps/callback
+
 PORT=3001
 ```
 
@@ -172,15 +177,16 @@ cd src/frontend && npm run start
 
 ### Backend
 
-| Module          | Description                                                    |
-|-----------------|----------------------------------------------------------------|
-| `auth`          | JWT login / register / token refresh                           |
-| `users`         | User profiles and admin management                             |
-| `activities`    | Rides (members) and club events (admins)                       |
-| `registrations` | Sign-up, waitlist, and cancellation logic                      |
-| `comments`      | Activity comments                                              |
-| `storage`       | MinIO S3 client — upload, delete, presigned URL generation     |
-| `strava`        | Strava OAuth 2.0 integration with persistent per-user tokens   |
+| Module          | Description                                                                  |
+|-----------------|------------------------------------------------------------------------------|
+| `auth`          | JWT login / register / token refresh                                         |
+| `users`         | User profiles and admin management                                           |
+| `activities`    | Rides (members) and club events (admins)                                     |
+| `registrations` | Sign-up, waitlist, and cancellation logic                                    |
+| `comments`      | Activity comments                                                            |
+| `storage`       | MinIO S3 client — upload, delete, presigned URL generation                   |
+| `strava`        | Strava OAuth 2.0 integration with persistent per-user tokens                 |
+| `ridewithgps`   | RideWithGPS OAuth 2.0 integration with persistent per-user tokens            |
 
 ### Frontend Pages
 
@@ -192,7 +198,7 @@ cd src/frontend && npm run start
 | `/activities`           | Calendar overview of upcoming rides                  |
 | `/activities/[id]`      | Activity detail, sign-up, comments, GPX route        |
 | `/my-rides`             | Your personal ride calendar                          |
-| `/profile`              | Edit your profile · Connect / disconnect Strava      |
+| `/profile`              | Edit your profile · Connect / disconnect Strava · Connect / disconnect RideWithGPS |
 | `/admin/users`          | Admin: manage members                                |
 | `/admin/activities`     | Admin: manage all activities                         |
 
@@ -204,6 +210,7 @@ Each activity can have a GPX route attached to it. Activity creators and admins 
 
 - **Upload a `.gpx` file** directly from their computer.
 - **Import a route from Strava** (requires connecting a Strava account first).
+- **Import a route from RideWithGPS** (requires connecting a RideWithGPS account first).
 
 Once a route is attached the activity detail page shows:
 - An interactive **Leaflet map** with the track drawn on a CyclOSM tile layer.
@@ -225,3 +232,32 @@ Users can connect their Strava account on the **Profile** page. Once connected:
 The OAuth flow uses an **HMAC-SHA256 signed state parameter** with a 10-minute expiry to prevent CSRF attacks.
 
 To enable Strava integration, register an API application at [strava.com/settings/api](https://www.strava.com/settings/api) and set the callback domain to `localhost` for local development. Add the credentials to `src/backend/.env` as shown above.
+
+---
+
+## RideWithGPS Integration
+
+Users can connect their RideWithGPS account on the **Profile** page. Once connected:
+
+- The access token is stored securely in the database. RideWithGPS tokens do not expire, so no automatic refresh is needed.
+- Users can **import any of their RideWithGPS routes** directly onto an activity as a GPX file.
+- Users can disconnect their RideWithGPS account at any time.
+
+The OAuth flow uses the same **HMAC-SHA256 signed state parameter** with a 10-minute expiry as the Strava integration.
+
+### Setting up RideWithGPS
+
+1. Go to [ridewithgps.com/api](https://ridewithgps.com/api) and register a new application.
+2. Set the **Redirect URI** to `http://localhost:3001/ridewithgps/callback` for local development.
+3. Copy the **Client ID** and **Client Secret** from the app settings.
+4. Add the credentials to `src/backend/.env`:
+
+```env
+RWGPS_CLIENT_ID=your_rwgps_client_id
+RWGPS_CLIENT_SECRET=your_rwgps_client_secret
+RWGPS_REDIRECT_URI=http://localhost:3001/ridewithgps/callback
+```
+
+### Unified OAuth token storage
+
+Both Strava and RideWithGPS tokens are stored in a **single `oauth_tokens` table** with a `platform` column (`strava` | `rwgps`). Adding future integrations only requires a new backend module — the database schema needs no changes.

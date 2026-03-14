@@ -13,6 +13,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import ElevationProfile from '@/components/activities/ElevationProfile';
 import RouteUpload from '@/components/activities/RouteUpload';
 import StravaRouteImport from '@/components/strava/StravaRouteImport';
+import RidewithgpsRouteImport from '@/components/ridewithgps/RidewithgpsRouteImport';
 
 const RouteMap = dynamic(() => import('@/components/activities/RouteMap'), { ssr: false });
 import {
@@ -337,6 +338,7 @@ const { data: activityData, isLoading, refetch: refetchActivity } = useActivitie
               {canManageRoute && (
                 <div className="flex flex-wrap items-center gap-2">
                   <StravaRouteImport activityId={id} onImported={() => refetchActivity()} />
+                  <RidewithgpsRouteImport activityId={id} onImported={() => refetchActivity()} />
                   <RouteUpload
                     activityId={id}
                     hasRoute={!!routeData}
@@ -392,14 +394,26 @@ const { data: activityData, isLoading, refetch: refetchActivity } = useActivitie
                 />
 
                 {/* GPX download */}
-                <a
-                  href={`${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'}/activities/${id}/route/download`}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <button
+                  onClick={async () => {
+                    try {
+                      const token = localStorage.getItem('accessToken');
+                      const res = await fetch(
+                        `${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'}/activities/${id}/route/download-url`,
+                        { headers: token ? { Authorization: `Bearer ${token}` } : {} },
+                      );
+                      if (!res.ok) return;
+                      const json = await res.json() as { data?: { url: string }; url?: string };
+                      const url = json.data?.url ?? json.url;
+                      if (url) window.open(url, '_blank');
+                    } catch {
+                      // ignore
+                    }
+                  }}
                   className="inline-flex items-center gap-1.5 text-sm text-brand-600 hover:underline"
                 >
                   ⬇ Download GPX-fil
-                </a>
+                </button>
               </div>
             ) : (
               <p className="text-sm text-gray-400">
