@@ -394,14 +394,26 @@ const { data: activityData, isLoading, refetch: refetchActivity } = useActivitie
                 />
 
                 {/* GPX download */}
-                <a
-                  href={`${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'}/activities/${id}/route/download`}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <button
+                  onClick={async () => {
+                    try {
+                      const token = localStorage.getItem('accessToken');
+                      const res = await fetch(
+                        `${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'}/activities/${id}/route/download-url`,
+                        { headers: token ? { Authorization: `Bearer ${token}` } : {} },
+                      );
+                      if (!res.ok) return;
+                      const json = await res.json() as { data?: { url: string }; url?: string };
+                      const url = json.data?.url ?? json.url;
+                      if (url) window.open(url, '_blank');
+                    } catch {
+                      // ignore
+                    }
+                  }}
                   className="inline-flex items-center gap-1.5 text-sm text-brand-600 hover:underline"
                 >
                   ⬇ Download GPX-fil
-                </a>
+                </button>
               </div>
             ) : (
               <p className="text-sm text-gray-400">

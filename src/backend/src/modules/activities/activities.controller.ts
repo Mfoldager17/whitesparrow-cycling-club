@@ -129,4 +129,11 @@ export class ActivitiesController {
     const url = await this.activitiesService.downloadRoute(id);
     return { url, statusCode: 302 };
   }
+
+  @Get(':id/route/download-url')
+  @ApiOperation({ summary: 'Get presigned download URL as JSON' })
+  async downloadRouteUrl(@Param('id', ParseUUIDPipe) id: string): Promise<{ url: string }> {
+    const url = await this.activitiesService.downloadRoute(id);
+    return { url };
+  }
 }
