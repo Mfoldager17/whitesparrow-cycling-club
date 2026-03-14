@@ -8,6 +8,7 @@ import { PageSpinner } from '@/components/ui/Spinner';
 import { ActivityTypeBadge, DifficultyBadge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { ActivityForm } from '@/components/activities/ActivityForm';
+import { ActivityRouteStep } from '@/components/activities/ActivityRouteStep';
 import {
   useActivitiesControllerFindAll,
   useActivitiesControllerCreate,
@@ -20,6 +21,7 @@ export default function AdminActivitiesPage() {
   const { mutateAsync: cancelActivity, isPending: cancelling } = useActivitiesControllerCancel();
 
   const [showForm, setShowForm] = useState(false);
+  const [createdActivityId, setCreatedActivityId] = useState<string | null>(null);
   const [cancelId, setCancelId] = useState<string | null>(null);
   const [cancelReason, setCancelReason] = useState('');
 
@@ -28,9 +30,19 @@ export default function AdminActivitiesPage() {
   if (isLoading) return <PageSpinner />;
 
   async function handleCreate(formData: Parameters<typeof createActivity>[0]['data']) {
-    await createActivity({ data: formData });
+    const created = await createActivity({ data: formData });
     await refetch();
+    const id = (created as { id?: string } | null | undefined)?.id;
+    if (id) {
+      setCreatedActivityId(id);
+    } else {
+      setShowForm(false);
+    }
+  }
+
+  function handleModalClose() {
     setShowForm(false);
+    setCreatedActivityId(null);
   }
 
   async function handleCancel() {
@@ -110,8 +122,12 @@ export default function AdminActivitiesPage() {
       </div>
 
       {/* Create modal */}
-      <Modal open={showForm} onClose={() => setShowForm(false)} title="Ny aktivitet">
-        <ActivityForm isAdmin onSubmit={handleCreate as Parameters<typeof ActivityForm>[0]['onSubmit']} isLoading={creating} />
+      <Modal open={showForm} onClose={handleModalClose} title={createdActivityId ? 'Tilføj rute' : 'Ny aktivitet'}>
+        {createdActivityId ? (
+          <ActivityRouteStep activityId={createdActivityId} onDone={handleModalClose} />
+        ) : (
+          <ActivityForm isAdmin onSubmit={handleCreate as Parameters<typeof ActivityForm>[0]['onSubmit']} isLoading={creating} />
+        )}
       </Modal>
 
       {/* Cancel confirm modal */}
