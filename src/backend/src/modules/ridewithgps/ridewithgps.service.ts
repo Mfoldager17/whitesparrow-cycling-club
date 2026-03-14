@@ -12,6 +12,12 @@ import { PrismaService } from '../../database/prisma.service';
 interface RwgpsTokenResponse {
   access_token: string;
   token_type: string;
+  scope: string;
+  created_at: number;
+  user_id: number;
+}
+
+interface RwgpsUserResponse {
   user: {
     id: number;
     name: string;
@@ -114,28 +120,44 @@ export class RidewithgpsService {
       }),
     });
 
+    const rawText = await res.text();
     if (!res.ok) {
-      const text = await res.text().catch(() => '');
-      throw new BadRequestException(`RideWithGPS token exchange failed: ${text.slice(0, 200)}`);
+      throw new BadRequestException(`RideWithGPS token exchange failed: ${rawText.slice(0, 200)}`);
     }
 
-    const data = (await res.json()) as RwgpsTokenResponse;
+    const data = JSON.parse(rawText) as RwgpsTokenResponse;
+
+    // Fetch user profile for name/avatar
+    let userName: string | null = null;
+    let userAvatar: string | null = null;
+    try {
+      const profileRes = await fetch(`https://ridewithgps.com/users/${data.user_id}.json`, {
+        headers: { Authorization: `Bearer ${data.access_token}` },
+      });
+      if (profileRes.ok) {
+        const profile = (await profileRes.json()) as RwgpsUserResponse;
+        userName = profile.user?.name ?? null;
+        userAvatar = profile.user?.avatar_url ?? null;
+      }
+    } catch (err) {
+      this.logger.warn('Could not fetch RideWithGPS user profile', err);
+    }
 
     await this.prisma.oAuthToken.upsert({
       where: { userId_platform: { userId, platform: 'rwgps' } },
       update: {
-        externalUserId: String(data.user.id),
+        externalUserId: String(data.user_id),
         accessToken: data.access_token,
-        userName: data.user.name,
-        userAvatar: data.user.avatar_url ?? null,
+        userName,
+        userAvatar,
       },
       create: {
         userId,
         platform: 'rwgps',
-        externalUserId: String(data.user.id),
+        externalUserId: String(data.user_id),
         accessToken: data.access_token,
-        userName: data.user.name,
-        userAvatar: data.user.avatar_url ?? null,
+        userName,
+        userAvatar,
       },
     });
   }
