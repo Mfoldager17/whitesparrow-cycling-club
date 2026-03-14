@@ -8,5 +8,6 @@ import { StorageModule } from '../storage/storage.module';
   imports: [StorageModule],
   providers: [ActivitiesService, GpxService],
   controllers: [ActivitiesController],
+  exports: [ActivitiesService, GpxService],
 })
 export class ActivitiesModule {}

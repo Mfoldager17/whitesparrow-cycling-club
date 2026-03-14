@@ -12,6 +12,7 @@ import { CommentForm } from '@/components/comments/CommentForm';
 import { useAuth } from '@/contexts/AuthContext';
 import ElevationProfile from '@/components/activities/ElevationProfile';
 import RouteUpload from '@/components/activities/RouteUpload';
+import StravaRouteImport from '@/components/strava/StravaRouteImport';
 
 const RouteMap = dynamic(() => import('@/components/activities/RouteMap'), { ssr: false });
 import {
@@ -187,11 +188,14 @@ const { data: activityData, isLoading, refetch: refetchActivity } = useActivitie
                 <div className="flex items-center justify-between gap-2">
                   <h2 className="font-semibold text-gray-900">GPX Rute</h2>
                   {canManageRoute && (
-                    <RouteUpload
-                      activityId={id}
-                      hasRoute={!!routeData}
-                      onSuccess={() => refetchActivity()}
-                    />
+                    <div className="flex items-center gap-2">
+                      <StravaRouteImport activityId={id} onImported={() => refetchActivity()} />
+                      <RouteUpload
+                        activityId={id}
+                        hasRoute={!!routeData}
+                        onSuccess={() => refetchActivity()}
+                      />
+                    </div>
                   )}
                 </div>
 

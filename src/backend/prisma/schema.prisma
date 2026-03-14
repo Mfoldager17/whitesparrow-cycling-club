@@ -54,8 +54,27 @@ model User {
   activities    Activity[]     @relation("ActivityCreator")
   registrations Registration[]
   comments      Comment[]
+  stravaToken   StravaToken?
 
   @@map("users")
+}
+
+model StravaToken {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId         String   @unique @map("user_id") @db.Uuid
+  athleteId      String   @unique @map("athlete_id")
+  accessToken    String   @map("access_token")
+  refreshToken   String   @map("refresh_token")
+  expiresAt      DateTime @map("expires_at") @db.Timestamptz()
+  scope          String   @default("read,activity:read")
+  athleteName    String?  @map("athlete_name")
+  athleteAvatar  String?  @map("athlete_avatar")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz()
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("strava_tokens")
 }
 
 model Activity {
