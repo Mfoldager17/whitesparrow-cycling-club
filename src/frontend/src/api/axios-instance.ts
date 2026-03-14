@@ -20,15 +20,63 @@ instance.interceptors.request.use((config) => {
   return config;
 });
 
-// If a 401 is received, clear credentials and redirect to login
+// Token refresh state
+let isRefreshing = false;
+let failedQueue: Array<{ resolve: (token: string) => void; reject: (err: unknown) => void }> = [];
+
+const processQueue = (error: unknown, token: string | null = null) => {
+  failedQueue.forEach((p) => (error ? p.reject(error) : p.resolve(token!)));
+  failedQueue = [];
+};
+
+// On 401, attempt to refresh the access token before giving up
 instance.interceptors.response.use(
   (res) => res,
-  (error) => {
-    if (error?.response?.status === 401 && typeof window !== 'undefined') {
-      window.localStorage.removeItem('accessToken');
-      window.localStorage.removeItem('refreshToken');
-      window.location.href = '/login';
+  async (error) => {
+    const originalRequest = error?.config as AxiosRequestConfig & { _retry?: boolean };
+
+    if (error?.response?.status === 401 && typeof window !== 'undefined' && !originalRequest?._retry) {
+      const storedRefreshToken = window.localStorage.getItem('refreshToken');
+
+      if (!storedRefreshToken) {
+        window.localStorage.removeItem('accessToken');
+        window.location.href = '/login';
+        return Promise.reject(error);
+      }
+
+      if (isRefreshing) {
+        return new Promise<string>((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        }).then((token) => {
+          originalRequest.headers = { ...originalRequest.headers, Authorization: `Bearer ${token}` };
+          return instance(originalRequest);
+        });
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      try {
+        const { data } = await axios.post(`${BASE_URL}/auth/refresh`, { refreshToken: storedRefreshToken });
+        const { accessToken, refreshToken: newRefreshToken } = data.data;
+
+        window.localStorage.setItem('accessToken', accessToken);
+        window.localStorage.setItem('refreshToken', newRefreshToken);
+
+        originalRequest.headers = { ...originalRequest.headers, Authorization: `Bearer ${accessToken}` };
+        processQueue(null, accessToken);
+        return instance(originalRequest);
+      } catch (refreshError) {
+        processQueue(refreshError, null);
+        window.localStorage.removeItem('accessToken');
+        window.localStorage.removeItem('refreshToken');
+        window.location.href = '/login';
+        return Promise.reject(refreshError);
+      } finally {
+        isRefreshing = false;
+      }
     }
+
     return Promise.reject(error);
   },
 );
