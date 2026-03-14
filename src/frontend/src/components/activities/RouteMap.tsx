@@ -48,7 +48,7 @@ export default function RouteMap({ trackPoints, boundingBox }: RouteMapProps) {
     <MapContainer
       center={center}
       zoom={13}
-      className="h-80 w-full rounded-xl z-0"
+      className="h-[26rem] w-full rounded-xl z-0"
       scrollWheelZoom={false}
     >
       <TileLayer

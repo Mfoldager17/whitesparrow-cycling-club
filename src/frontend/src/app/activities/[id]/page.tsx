@@ -168,103 +168,6 @@ const { data: activityData, isLoading, refetch: refetchActivity } = useActivitie
             </dl>
           </div>
 
-          {/* Route / GPX */}
-          {(() => {
-            const routeData = (activity as any).routeData as {
-              id: string;
-              totalDistanceKm: number;
-              elevationGainM: number;
-              elevationLossM: number;
-              maxElevationM: number;
-              minElevationM: number;
-              trackPoints: { lat: number; lng: number; ele: number; distanceKm: number }[];
-              boundingBox: { minLat: number; maxLat: number; minLng: number; maxLng: number };
-            } | null;
-            const canManageRoute =
-              user && (activity.createdBy === user.userId || isAdmin);
-
-            return (
-              <div className="card space-y-4">
-                <div className="flex items-center justify-between gap-2">
-                  <h2 className="font-semibold text-gray-900">GPX Rute</h2>
-                  {canManageRoute && (
-                    <div className="flex items-center gap-2">
-                      <StravaRouteImport activityId={id} onImported={() => refetchActivity()} />
-                      <RouteUpload
-                        activityId={id}
-                        hasRoute={!!routeData}
-                        onSuccess={() => refetchActivity()}
-                      />
-                    </div>
-                  )}
-                </div>
-
-                {routeData ? (
-                  <div className="space-y-4">
-                    {/* Stats row */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
-                      <div className="rounded-lg bg-gray-50 px-3 py-2">
-                        <p className="text-xs text-gray-500 mb-0.5">Distance</p>
-                        <p className="text-lg font-bold text-gray-900">
-                          {routeData.totalDistanceKm} km
-                        </p>
-                      </div>
-                      <div className="rounded-lg bg-gray-50 px-3 py-2">
-                        <p className="text-xs text-gray-500 mb-0.5">Stigning</p>
-                        <p className="text-lg font-bold text-green-700">
-                          ↑ {routeData.elevationGainM} m
-                        </p>
-                      </div>
-                      <div className="rounded-lg bg-gray-50 px-3 py-2">
-                        <p className="text-xs text-gray-500 mb-0.5">Fald</p>
-                        <p className="text-lg font-bold text-red-600">
-                          ↓ {routeData.elevationLossM} m
-                        </p>
-                      </div>
-                      <div className="rounded-lg bg-gray-50 px-3 py-2">
-                        <p className="text-xs text-gray-500 mb-0.5">Maks. højde</p>
-                        <p className="text-lg font-bold text-gray-900">
-                          {routeData.maxElevationM} m
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Map */}
-                    <RouteMap
-                      trackPoints={routeData.trackPoints}
-                      boundingBox={routeData.boundingBox}
-                    />
-
-                    {/* Elevation chart */}
-                    <ElevationProfile
-                      trackPoints={routeData.trackPoints}
-                      elevationGainM={routeData.elevationGainM}
-                      elevationLossM={routeData.elevationLossM}
-                      maxElevationM={routeData.maxElevationM}
-                      minElevationM={routeData.minElevationM}
-                    />
-
-                    {/* GPX download */}
-                    <a
-                      href={`${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'}/activities/${id}/route/download`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 text-sm text-brand-600 hover:underline"
-                    >
-                      ⬇ Download GPX-fil
-                    </a>
-                  </div>
-                ) : (
-                  <p className="text-sm text-gray-400">
-                    {canManageRoute
-                      ? 'Upload en GPX-fil for at vise ruten på kortet.'
-                      : 'Ingen GPX-rute tilknyttet denne aktivitet.'}
-                  </p>
-                )}
-              </div>
-            );
-          })()}
-
           {/* Comments */}
           <div className="card">
             <h2 className="font-semibold text-gray-900 mb-4">
@@ -407,6 +310,103 @@ const { data: activityData, isLoading, refetch: refetchActivity } = useActivitie
           })()}
         </div>
       </div>
+
+      {/* Route / GPX — full width */}
+      {(() => {
+        const routeData = (activity as any).routeData as {
+          id: string;
+          totalDistanceKm: number;
+          elevationGainM: number;
+          elevationLossM: number;
+          maxElevationM: number;
+          minElevationM: number;
+          trackPoints: { lat: number; lng: number; ele: number; distanceKm: number }[];
+          boundingBox: { minLat: number; maxLat: number; minLng: number; maxLng: number };
+        } | null;
+        const canManageRoute =
+          user && (activity.createdBy === user.userId || isAdmin);
+
+        return (
+          <div className="card space-y-4 mt-8">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="font-semibold text-gray-900">GPX Rute</h2>
+              {canManageRoute && (
+                <div className="flex items-center gap-2">
+                  <StravaRouteImport activityId={id} onImported={() => refetchActivity()} />
+                  <RouteUpload
+                    activityId={id}
+                    hasRoute={!!routeData}
+                    onSuccess={() => refetchActivity()}
+                  />
+                </div>
+              )}
+            </div>
+
+            {routeData ? (
+              <div className="space-y-4">
+                {/* Stats row */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                  <div className="rounded-lg bg-gray-50 px-3 py-2">
+                    <p className="text-xs text-gray-500 mb-0.5">Distance</p>
+                    <p className="text-lg font-bold text-gray-900">
+                      {routeData.totalDistanceKm} km
+                    </p>
+                  </div>
+                  <div className="rounded-lg bg-gray-50 px-3 py-2">
+                    <p className="text-xs text-gray-500 mb-0.5">Stigning</p>
+                    <p className="text-lg font-bold text-green-700">
+                      ↑ {routeData.elevationGainM} m
+                    </p>
+                  </div>
+                  <div className="rounded-lg bg-gray-50 px-3 py-2">
+                    <p className="text-xs text-gray-500 mb-0.5">Fald</p>
+                    <p className="text-lg font-bold text-red-600">
+                      ↓ {routeData.elevationLossM} m
+                    </p>
+                  </div>
+                  <div className="rounded-lg bg-gray-50 px-3 py-2">
+                    <p className="text-xs text-gray-500 mb-0.5">Maks. højde</p>
+                    <p className="text-lg font-bold text-gray-900">
+                      {routeData.maxElevationM} m
+                    </p>
+                  </div>
+                </div>
+
+                {/* Map */}
+                <RouteMap
+                  trackPoints={routeData.trackPoints}
+                  boundingBox={routeData.boundingBox}
+                />
+
+                {/* Elevation chart */}
+                <ElevationProfile
+                  trackPoints={routeData.trackPoints}
+                  elevationGainM={routeData.elevationGainM}
+                  elevationLossM={routeData.elevationLossM}
+                  maxElevationM={routeData.maxElevationM}
+                  minElevationM={routeData.minElevationM}
+                />
+
+                {/* GPX download */}
+                <a
+                  href={`${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'}/activities/${id}/route/download`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-sm text-brand-600 hover:underline"
+                >
+                  ⬇ Download GPX-fil
+                </a>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-400">
+                {canManageRoute
+                  ? 'Upload en GPX-fil for at vise ruten på kortet.'
+                  : 'Ingen GPX-rute tilknyttet denne aktivitet.'}
+              </p>
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 }
