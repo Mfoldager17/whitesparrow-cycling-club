@@ -30,9 +30,9 @@ export default function ProfilePage() {
     values: data
       ? {
           fullName: data.fullName,
-          phone: data.phone ?? '',
-          bio: data.bio ?? '',
-          avatarUrl: data.avatarUrl ?? '',
+          phone: (data.phone as unknown as string) ?? '',
+          bio: (data.bio as unknown as string) ?? '',
+          avatarUrl: (data.avatarUrl as unknown as string) ?? '',
         }
       : undefined,
   });

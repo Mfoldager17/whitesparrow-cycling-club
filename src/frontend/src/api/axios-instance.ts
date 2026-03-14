@@ -7,6 +7,8 @@ const instance = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
+export { instance as apiClient };
+
 // Attach JWT token from localStorage on every request
 instance.interceptors.request.use((config) => {
   if (typeof window !== 'undefined') {

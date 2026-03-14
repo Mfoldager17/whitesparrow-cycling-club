@@ -6,14 +6,21 @@ import {
 } from '@nestjs/common';
 import { Activity, User, UserRole } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service';
+import { StorageService } from '../storage/storage.service';
+import { GpxService } from './gpx.service';
 import { CreateActivityDto } from './dto/create-activity.dto';
 import { CancelActivityDto, UpdateActivityDto } from './dto/update-activity.dto';
 import { ActivityQueryDto } from './dto/activity-query.dto';
 import { ActivityResponseDto, ActivityWithStatsDto } from './dto/activity-response.dto';
+import { RouteDataDto } from './dto/route-response.dto';
 
 @Injectable()
 export class ActivitiesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly storage: StorageService,
+    private readonly gpx: GpxService,
+  ) {}
 
   private toDto(activity: Activity): ActivityResponseDto {
     return {
@@ -35,6 +42,28 @@ export class ActivitiesService {
       createdBy: activity.createdBy,
       createdAt: activity.createdAt,
       updatedAt: activity.updatedAt,
+    };
+  }
+
+  private toRouteDto(routeData: {
+    id: string;
+    totalDistanceKm: number;
+    elevationGainM: number;
+    elevationLossM: number;
+    maxElevationM: number;
+    minElevationM: number;
+    trackPoints: unknown;
+    boundingBox: unknown;
+  }): RouteDataDto {
+    return {
+      id: routeData.id,
+      totalDistanceKm: routeData.totalDistanceKm,
+      elevationGainM: routeData.elevationGainM,
+      elevationLossM: routeData.elevationLossM,
+      maxElevationM: routeData.maxElevationM,
+      minElevationM: routeData.minElevationM,
+      trackPoints: routeData.trackPoints as RouteDataDto['trackPoints'],
+      boundingBox: routeData.boundingBox as RouteDataDto['boundingBox'],
     };
   }
 
@@ -60,6 +89,7 @@ export class ActivitiesService {
       organizerName: a.creator.fullName,
       registeredCount: a.registrations.filter((r) => r.status === 'registered').length,
       waitlistCount: a.registrations.filter((r) => r.status === 'waitlisted').length,
+      routeData: null,
     }));
   }
 
@@ -69,6 +99,7 @@ export class ActivitiesService {
       include: {
         creator: { select: { fullName: true } },
         registrations: { select: { status: true } },
+        routeData: true,
       },
     });
     if (!a) throw new NotFoundException('Activity not found');
@@ -78,6 +109,7 @@ export class ActivitiesService {
       organizerName: a.creator.fullName,
       registeredCount: a.registrations.filter((r) => r.status === 'registered').length,
       waitlistCount: a.registrations.filter((r) => r.status === 'waitlisted').length,
+      routeData: a.routeData ? this.toRouteDto(a.routeData) : null,
     };
   }
 
@@ -195,5 +227,63 @@ export class ActivitiesService {
     }
 
     await this.prisma.activity.delete({ where: { id } });
+  }
+
+  async uploadRoute(user: User, activityId: string, file: Express.Multer.File): Promise<RouteDataDto> {
+    const activity = await this.prisma.activity.findUnique({ where: { id: activityId } });
+    if (!activity) throw new NotFoundException('Activity not found');
+
+    if (activity.createdBy !== user.id && user.role !== UserRole.admin) {
+      throw new ForbiddenException('Not allowed to upload route for this activity');
+    }
+
+    const parsed = this.gpx.parse(file.buffer);
+
+    const gpxFileKey = `routes/${activityId}/${Date.now()}.gpx`;
+    await this.storage.upload(gpxFileKey, file.buffer, 'application/gpx+xml');
+
+    // Delete any previous route data for this activity
+    const existing = await this.prisma.routeData.findUnique({ where: { activityId } });
+    if (existing) {
+      await this.storage.delete(existing.gpxFileKey).catch(() => {});
+      await this.prisma.routeData.delete({ where: { activityId } });
+    }
+
+    const routeData = await this.prisma.routeData.create({
+      data: {
+        activityId,
+        gpxFileKey,
+        totalDistanceKm: parsed.totalDistanceKm,
+        elevationGainM: parsed.elevationGainM,
+        elevationLossM: parsed.elevationLossM,
+        maxElevationM: parsed.maxElevationM,
+        minElevationM: parsed.minElevationM,
+        trackPoints: parsed.trackPoints as object[],
+        boundingBox: parsed.boundingBox as object,
+      },
+    });
+
+    return this.toRouteDto(routeData);
+  }
+
+  async deleteRoute(user: User, activityId: string): Promise<void> {
+    const activity = await this.prisma.activity.findUnique({ where: { id: activityId } });
+    if (!activity) throw new NotFoundException('Activity not found');
+
+    if (activity.createdBy !== user.id && user.role !== UserRole.admin) {
+      throw new ForbiddenException('Not allowed to delete route for this activity');
+    }
+
+    const routeData = await this.prisma.routeData.findUnique({ where: { activityId } });
+    if (!routeData) throw new NotFoundException('No route data found for this activity');
+
+    await this.storage.delete(routeData.gpxFileKey).catch(() => {});
+    await this.prisma.routeData.delete({ where: { activityId } });
+  }
+
+  async downloadRoute(activityId: string): Promise<string> {
+    const routeData = await this.prisma.routeData.findUnique({ where: { activityId } });
+    if (!routeData) throw new NotFoundException('No route data found for this activity');
+    return this.storage.getPresignedUrl(routeData.gpxFileKey, 600);
   }
 }

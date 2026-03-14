@@ -81,8 +81,28 @@ model Activity {
   creator       User           @relation("ActivityCreator", fields: [createdBy], references: [id])
   registrations Registration[]
   comments      Comment[]
+  routeData     RouteData?
 
   @@map("activities")
+}
+
+model RouteData {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  activityId      String   @unique @map("activity_id") @db.Uuid
+  gpxFileKey      String   @map("gpx_file_key")
+  totalDistanceKm Float    @map("total_distance_km")
+  elevationGainM  Float    @map("elevation_gain_m")
+  elevationLossM  Float    @map("elevation_loss_m")
+  maxElevationM   Float    @map("max_elevation_m")
+  minElevationM   Float    @map("min_elevation_m")
+  trackPoints     Json     @map("track_points")
+  boundingBox     Json     @map("bounding_box")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz()
+
+  activity Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+
+  @@map("route_data")
 }
 
 model Registration {
