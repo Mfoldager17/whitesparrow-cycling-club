@@ -18,7 +18,7 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 export default function ProfilePage() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const { data, isLoading } = useUsersControllerGetMe();
   const { mutateAsync, isPending, isSuccess } = useUsersControllerUpdateMe();
 
@@ -97,6 +97,12 @@ export default function ProfilePage() {
 
       <div className="mt-6">
         <StravaConnect />
+      </div>
+
+      <div className="mt-6 sm:hidden">
+        <button onClick={logout} className="btn-secondary w-full">
+          Log ud
+        </button>
       </div>
     </div>
   );

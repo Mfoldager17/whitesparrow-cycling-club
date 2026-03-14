@@ -79,7 +79,7 @@ export default function StravaRouteImport({ activityId, onImported }: Props) {
       </button>
 
       {open && routes && (
-        <div className="absolute right-0 top-full mt-2 z-50 w-96 rounded-xl border border-gray-200 bg-white shadow-lg overflow-hidden">
+        <div className="absolute left-0 sm:left-auto sm:right-0 top-full mt-2 z-50 w-80 sm:w-96 max-w-[calc(100vw-1rem)] rounded-xl border border-gray-200 bg-white shadow-lg overflow-hidden">
           <div className="flex items-center justify-between px-4 py-2 bg-gray-50 border-b border-gray-200">
             <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
               Dine Strava-cykelruter

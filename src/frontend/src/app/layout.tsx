@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google';
 import './globals.css';
 import { Providers } from '@/components/providers/Providers';
 import { Navbar } from '@/components/layout/Navbar';
+import { BottomNav } from '@/components/layout/BottomNav';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -18,10 +19,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Providers>
           <div className="min-h-screen flex flex-col">
             <Navbar />
-            <main className="flex-1">{children}</main>
-            <footer className="border-t border-gray-200 py-8 text-center text-sm text-gray-500">
+            <main className="flex-1 pb-16 sm:pb-0">{children}</main>
+            <footer className="border-t border-gray-200 py-8 text-center text-sm text-gray-500 mb-16 sm:mb-0">
               © {new Date().getFullYear()} Whitesparrow Cycling Club
             </footer>
+            <BottomNav />
           </div>
         </Providers>
       </body>

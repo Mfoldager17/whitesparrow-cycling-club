@@ -13,7 +13,7 @@ import {
 import { da } from 'date-fns/locale';
 import { CalendarGrid } from '@/components/ui/CalendarGrid';
 import { CalendarNav } from '@/components/ui/CalendarNav';
-import { ActivityCard } from '@/components/activities/ActivityCard';
+import { ActivityDateList } from '@/components/activities/ActivityDateList';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { useMyRegistrationsControllerGetMyRegistrations } from '@/api/generated/registrations/registrations';
@@ -142,42 +142,22 @@ export default function MyRidesPage() {
           }
         />
       ) : (
-        <div className="space-y-8">
-          {grouped.map(([dateKey, regs]) => (
-            <section key={dateKey}>
-              <div className="flex items-center gap-3 mb-3">
-                <div className="flex flex-col items-center justify-center w-11 h-11 rounded-xl bg-brand-600 text-white shrink-0">
-                  <span className="text-[10px] font-semibold leading-none uppercase">
-                    {format(new Date(dateKey), 'MMM', { locale: da })}
-                  </span>
-                  <span className="text-xl font-bold leading-tight">
-                    {format(new Date(dateKey), 'd')}
-                  </span>
-                </div>
-                <p className="text-sm font-semibold text-gray-800 capitalize">
-                  {format(new Date(dateKey), 'EEEE', { locale: da })}
-                </p>
-              </div>
-
-              <div className="ml-14 space-y-3">
-                {regs.map((reg) => (
-                  <ActivityCard
-                    key={reg.id}
-                    id={reg.activityId}
-                    title={reg.title ?? ''}
-                    type={reg.type ?? ''}
-                    startsAt={reg.startsAt!}
-                    startLocation={reg.startLocation}
-                    approxKm={reg.approxKm != null ? Number(reg.approxKm) : null}
-                    difficulty={reg.difficulty != null ? String(reg.difficulty) : null}
-                    isPast={reg.startsAt ? new Date(reg.startsAt) < new Date() : false}
-                    registrationStatus={reg.registrationStatus != null ? String(reg.registrationStatus) : null}
-                  />
-                ))}
-              </div>
-            </section>
-          ))}
-        </div>
+        <ActivityDateList
+          grouped={grouped.map(([dateKey, regs]) => [
+            dateKey,
+            regs.map((reg) => ({
+              id: reg.activityId,
+              title: reg.title ?? '',
+              type: reg.type ?? '',
+              startsAt: reg.startsAt!,
+              startLocation: reg.startLocation,
+              approxKm: reg.approxKm != null ? Number(reg.approxKm) : null,
+              difficulty: reg.difficulty != null ? String(reg.difficulty) : null,
+              isPast: reg.startsAt ? new Date(reg.startsAt) < new Date() : false,
+              registrationStatus: reg.registrationStatus != null ? String(reg.registrationStatus) : null,
+            })),
+          ])}
+        />
       )}
     </div>
   );

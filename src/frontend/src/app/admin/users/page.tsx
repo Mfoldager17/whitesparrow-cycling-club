@@ -35,7 +35,7 @@ export default function AdminUsersPage() {
       {users.length === 0 ? (
         <EmptyState title="Ingen brugere fundet" />
       ) : (
-        <div className="card overflow-hidden p-0">
+        <div className="card overflow-y-hidden overflow-x-auto p-0">
           <table className="min-w-full divide-y divide-gray-100">
             <thead className="bg-gray-50">
               <tr>

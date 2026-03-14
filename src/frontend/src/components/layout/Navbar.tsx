@@ -28,9 +28,9 @@ export function Navbar() {
           <span className="hidden sm:inline">Whitesparrow CC</span>
         </Link>
 
-        {/* Nav links */}
+        {/* Nav links – hidden on mobile (handled by BottomNav) */}
         {user && (
-          <nav className="flex items-center gap-1">
+          <nav className="hidden sm:flex items-center gap-1">
             {navLinks.map((link) => (
               <Link
                 key={link.href}
@@ -66,14 +66,14 @@ export function Navbar() {
         {/* Auth actions */}
         <div className="flex items-center gap-2">
           {user ? (
-            <>
+            <div className="hidden sm:flex items-center gap-2">
               <Link href="/profile" className="btn-secondary text-xs px-3 py-1.5">
                 Profil
               </Link>
               <button onClick={logout} className="btn-secondary text-xs px-3 py-1.5">
                 Log ud
               </button>
-            </>
+            </div>
           ) : (
             <>
               <Link href="/login" className="btn-secondary text-xs px-3 py-1.5">

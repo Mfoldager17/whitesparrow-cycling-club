@@ -196,13 +196,17 @@ const { data: activityData, isLoading, refetch: refetchActivity } = useActivitie
           <div className="card">
             <h2 className="font-semibold text-gray-900 mb-3">Tilmeldinger</h2>
             <div className="flex flex-col gap-1 text-sm mb-4">
-              <span className="text-green-700 font-medium">
-                ✅ {activity.registeredCount} tilmeldt
-                {activity.maxParticipants ? ` / ${activity.maxParticipants}` : ''}
+              <span className="inline-flex items-center gap-1.5 text-green-700 font-medium">
+                <span>✅</span>
+                <span>
+                  {activity.registeredCount} tilmeldt
+                  {activity.maxParticipants ? ` / ${activity.maxParticipants}` : ''}
+                </span>
               </span>
               {activity.waitlistCount > 0 && (
-                <span className="text-yellow-700">
-                  ⏳ {activity.waitlistCount} på venteliste
+                <span className="inline-flex items-center gap-1.5 text-yellow-700">
+                  <span>⏳</span>
+                  <span>{activity.waitlistCount} på venteliste</span>
                 </span>
               )}
               {spotsLeft !== null && spotsLeft > 0 && (
@@ -262,10 +266,10 @@ const { data: activityData, isLoading, refetch: refetchActivity } = useActivitie
                   .map((r) => (
                     <li key={r.id} className="flex items-center justify-between gap-3 text-sm">
                       <div className="min-w-0">
-                        <p className="font-medium text-gray-800 truncate">
-                          {r.status === 'waitlisted' ? '⏳' : '✅'}{' '}
-                          {r.userName ?? r.userId.slice(0, 8) + '…'}
-                        </p>
+                        <div className="flex items-center gap-1.5 font-medium text-gray-800 min-w-0">
+                          <span className="shrink-0">{r.status === 'waitlisted' ? '⏳' : '✅'}</span>
+                          <span className="truncate">{r.userName ?? r.userId.slice(0, 8) + '…'}</span>
+                        </div>
                         {r.userEmail && (
                           <p className="text-xs text-gray-400 truncate">{r.userEmail}</p>
                         )}
@@ -328,10 +332,10 @@ const { data: activityData, isLoading, refetch: refetchActivity } = useActivitie
 
         return (
           <div className="card space-y-4 mt-8">
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <h2 className="font-semibold text-gray-900">GPX Rute</h2>
               {canManageRoute && (
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <StravaRouteImport activityId={id} onImported={() => refetchActivity()} />
                   <RouteUpload
                     activityId={id}

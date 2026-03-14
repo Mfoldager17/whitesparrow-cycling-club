@@ -63,12 +63,24 @@ export function ActivityCard({
               {!isPast && registrationStatus && <RegistrationStatusBadge status={registrationStatus} />}
             </div>
             <h4 className="font-semibold text-gray-900 leading-snug">{title}</h4>
-            <p className="text-sm text-gray-500 mt-0.5">
-              🕐 {format(new Date(startsAt), 'HH:mm', { locale: da })}
-              {startLocation && ` · 📍 ${startLocation}`}
+            <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm text-gray-500 mt-0.5">
+              <span className="inline-flex items-center gap-1">
+                <span>🕐</span>
+                <span>{format(new Date(startsAt), 'HH:mm', { locale: da })}</span>
+              </span>
+              {startLocation && (
+                <span className="inline-flex items-center gap-1">
+                  <span aria-hidden className="text-gray-300">·</span>
+                  <span>📍</span>
+                  <span>{startLocation}</span>
+                </span>
+              )}
             </p>
             {organizerName && (
-              <p className="text-sm text-gray-400 mt-0.5">👤 {organizerName}</p>
+              <p className="flex items-center gap-1 text-sm text-gray-400 mt-0.5">
+                <span>👤</span>
+                <span>{organizerName}</span>
+              </p>
             )}
           </div>
           <div className="flex flex-col items-end gap-1 shrink-0">
