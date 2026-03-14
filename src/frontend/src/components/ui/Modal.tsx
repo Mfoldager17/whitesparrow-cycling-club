@@ -24,14 +24,14 @@ export function Modal({ open, onClose, title, children, className }: ModalProps)
       {/* Panel */}
       <div
         className={clsx(
-          'relative z-10 w-full max-w-lg rounded-2xl bg-white shadow-xl',
+          'relative z-10 flex flex-col w-full max-w-lg rounded-2xl bg-white shadow-xl max-h-[90vh]',
           className,
         )}
         role="dialog"
         aria-modal
         aria-labelledby="modal-title"
       >
-        <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+        <div className="flex shrink-0 items-center justify-between border-b border-gray-100 px-6 py-4">
           <h2 id="modal-title" className="text-base font-semibold text-gray-900">
             {title}
           </h2>
@@ -43,7 +43,7 @@ export function Modal({ open, onClose, title, children, className }: ModalProps)
             ✕
           </button>
         </div>
-        <div className="px-6 py-5">{children}</div>
+        <div className="overflow-y-auto px-6 py-5">{children}</div>
       </div>
     </div>
   );

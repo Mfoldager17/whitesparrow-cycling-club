@@ -15,7 +15,6 @@ const schema = z
     approxKm: z.coerce.number().int().positive().optional().or(z.literal('')),
     difficulty: z.enum(['easy', 'moderate', 'hard', 'extreme']).optional(),
     maxParticipants: z.coerce.number().int().positive().optional().or(z.literal('')),
-    routeUrl: z.string().url('Ugyldig URL').optional().or(z.literal('')),
   })
   .refine(
     (d) => !d.endsAt || !d.startsAt || new Date(d.endsAt) > new Date(d.startsAt),
@@ -118,13 +117,6 @@ export function ActivityForm({ defaultValues, isAdmin, onSubmit, isLoading }: Ac
       <div>
         <label className="label">Max deltagere (blank = ubegrænset)</label>
         <input type="number" {...register('maxParticipants')} className="input" placeholder="20" />
-      </div>
-
-      {/* Route URL */}
-      <div>
-        <label className="label">Rute-link (Komoot, Strava…)</label>
-        <input {...register('routeUrl')} className="input" placeholder="https://www.komoot.com/tour/..." />
-        {errors.routeUrl && <p className="mt-1 text-xs text-red-600">{errors.routeUrl.message}</p>}
       </div>
 
       <div className="pt-2">

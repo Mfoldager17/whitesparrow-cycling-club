@@ -15,6 +15,7 @@ import { CalendarGrid } from '@/components/ui/CalendarGrid';
 import { CalendarNav } from '@/components/ui/CalendarNav';
 import { ActivityDateList } from '@/components/activities/ActivityDateList';
 import { ActivityForm } from '@/components/activities/ActivityForm';
+import { ActivityRouteStep } from '@/components/activities/ActivityRouteStep';
 import { Modal } from '@/components/ui/Modal';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -29,6 +30,7 @@ import { groupByDate } from '@/lib/groupByDate';
 export default function ActivitiesPage() {
   const { user, isAdmin } = useAuth();
   const [showForm, setShowForm] = useState(false);
+  const [createdActivityId, setCreatedActivityId] = useState<string | null>(null);
   const [currentMonth, setCurrentMonth] = useState(() => startOfMonth(new Date()));
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
@@ -76,9 +78,19 @@ export default function ActivitiesPage() {
   }
 
   async function handleCreate(formData: Parameters<typeof createActivity>[0]['data']) {
-    await createActivity({ data: formData });
+    const created = await createActivity({ data: formData });
     await refetch();
+    const id = (created as { id?: string } | null | undefined)?.id;
+    if (id) {
+      setCreatedActivityId(id);
+    } else {
+      setShowForm(false);
+    }
+  }
+
+  function handleModalClose() {
     setShowForm(false);
+    setCreatedActivityId(null);
   }
 
   if (isLoading) return <PageSpinner />;
@@ -154,12 +166,16 @@ export default function ActivitiesPage() {
       )}
 
       {/* New activity modal */}
-      <Modal open={showForm} onClose={() => setShowForm(false)} title="Opret aktivitet">
-        <ActivityForm
-          isAdmin={isAdmin}
-          isLoading={isPending}
-          onSubmit={handleCreate as Parameters<typeof ActivityForm>[0]['onSubmit']}
-        />
+      <Modal open={showForm} onClose={handleModalClose} title={createdActivityId ? 'Tilføj rute' : 'Opret aktivitet'}>
+        {createdActivityId ? (
+          <ActivityRouteStep activityId={createdActivityId} onDone={handleModalClose} />
+        ) : (
+          <ActivityForm
+            isAdmin={isAdmin}
+            isLoading={isPending}
+            onSubmit={handleCreate as Parameters<typeof ActivityForm>[0]['onSubmit']}
+          />
+        )}
       </Modal>
     </div>
   );
