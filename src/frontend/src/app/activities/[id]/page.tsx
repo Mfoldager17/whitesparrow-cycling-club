@@ -328,10 +328,10 @@ const { data: activityData, isLoading, refetch: refetchActivity } = useActivitie
 
         return (
           <div className="card space-y-4 mt-8">
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <h2 className="font-semibold text-gray-900">GPX Rute</h2>
               {canManageRoute && (
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <StravaRouteImport activityId={id} onImported={() => refetchActivity()} />
                   <RouteUpload
                     activityId={id}
