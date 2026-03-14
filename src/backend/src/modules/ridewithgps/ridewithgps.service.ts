@@ -121,17 +121,18 @@ export class RidewithgpsService {
 
     const data = (await res.json()) as RwgpsTokenResponse;
 
-    await this.prisma.ridewithgpsToken.upsert({
-      where: { userId },
+    await this.prisma.oAuthToken.upsert({
+      where: { userId_platform: { userId, platform: 'rwgps' } },
       update: {
-        rwgpsUserId: data.user.id,
+        externalUserId: String(data.user.id),
         accessToken: data.access_token,
         userName: data.user.name,
         userAvatar: data.user.avatar_url ?? null,
       },
       create: {
         userId,
-        rwgpsUserId: data.user.id,
+        platform: 'rwgps',
+        externalUserId: String(data.user.id),
         accessToken: data.access_token,
         userName: data.user.name,
         userAvatar: data.user.avatar_url ?? null,
@@ -141,7 +142,9 @@ export class RidewithgpsService {
 
   /** Return stored connection status for the user */
   async getStatus(userId: string) {
-    const token = await this.prisma.ridewithgpsToken.findUnique({ where: { userId } });
+    const token = await this.prisma.oAuthToken.findUnique({
+      where: { userId_platform: { userId, platform: 'rwgps' } },
+    });
     if (!token) return { connected: false };
     return {
       connected: true,
@@ -152,16 +155,18 @@ export class RidewithgpsService {
 
   /** Disconnect — delete stored token */
   async disconnect(userId: string): Promise<void> {
-    await this.prisma.ridewithgpsToken.deleteMany({ where: { userId } });
+    await this.prisma.oAuthToken.deleteMany({ where: { userId, platform: 'rwgps' } });
   }
 
   /** List the user's RideWithGPS routes */
   async listRoutes(userId: string): Promise<RwgpsRoute[]> {
-    const token = await this.prisma.ridewithgpsToken.findUnique({ where: { userId } });
+    const token = await this.prisma.oAuthToken.findUnique({
+      where: { userId_platform: { userId, platform: 'rwgps' } },
+    });
     if (!token) throw new NotFoundException('No RideWithGPS connection found');
 
     const url = new URL(
-      `https://ridewithgps.com/users/${token.rwgpsUserId}/routes.json`,
+      `https://ridewithgps.com/users/${token.externalUserId}/routes.json`,
     );
     url.searchParams.set('apikey', this.clientId);
     url.searchParams.set('version', '2');
@@ -178,7 +183,9 @@ export class RidewithgpsService {
 
   /** Download a single RideWithGPS route as a GPX buffer */
   async downloadRouteGpx(userId: string, routeId: string): Promise<Buffer> {
-    const token = await this.prisma.ridewithgpsToken.findUnique({ where: { userId } });
+    const token = await this.prisma.oAuthToken.findUnique({
+      where: { userId_platform: { userId, platform: 'rwgps' } },
+    });
     if (!token) throw new NotFoundException('No RideWithGPS connection found');
 
     const url = new URL(`https://ridewithgps.com/routes/${routeId}.gpx`);

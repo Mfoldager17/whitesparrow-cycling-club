@@ -13,6 +13,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import ElevationProfile from '@/components/activities/ElevationProfile';
 import RouteUpload from '@/components/activities/RouteUpload';
 import StravaRouteImport from '@/components/strava/StravaRouteImport';
+import RidewithgpsRouteImport from '@/components/ridewithgps/RidewithgpsRouteImport';
 
 const RouteMap = dynamic(() => import('@/components/activities/RouteMap'), { ssr: false });
 import {
@@ -337,6 +338,7 @@ const { data: activityData, isLoading, refetch: refetchActivity } = useActivitie
               {canManageRoute && (
                 <div className="flex flex-wrap items-center gap-2">
                   <StravaRouteImport activityId={id} onImported={() => refetchActivity()} />
+                  <RidewithgpsRouteImport activityId={id} onImported={() => refetchActivity()} />
                   <RouteUpload
                     activityId={id}
                     hasRoute={!!routeData}

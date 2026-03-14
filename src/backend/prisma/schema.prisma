@@ -34,6 +34,11 @@ enum RegistrationStatus {
   cancelled
 }
 
+enum OAuthPlatform {
+  strava
+  rwgps
+}
+
 // ─────────────────────────────────────────────────────────
 // Models
 // ─────────────────────────────────────────────────────────
@@ -51,46 +56,37 @@ model User {
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz()
   updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz()
 
-  activities       Activity[]     @relation("ActivityCreator")
-  registrations    Registration[]
-  comments         Comment[]
-  stravaToken      StravaToken?
-  ridewithgpsToken RidewithgpsToken?
+  activities    Activity[]     @relation("ActivityCreator")
+  registrations Registration[]
+  comments      Comment[]
+  oauthTokens   OAuthToken[]
 
   @@map("users")
 }
 
-model StravaToken {
-  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId         String   @unique @map("user_id") @db.Uuid
-  athleteId      String   @unique @map("athlete_id")
-  accessToken    String   @map("access_token")
-  refreshToken   String   @map("refresh_token")
-  expiresAt      DateTime @map("expires_at") @db.Timestamptz()
-  scope          String   @default("read,activity:read")
-  athleteName    String?  @map("athlete_name")
-  athleteAvatar  String?  @map("athlete_avatar")
-  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz()
-  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz()
+/// Unified OAuth token storage — one row per user per platform.
+model OAuthToken {
+  id             String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId         String        @map("user_id") @db.Uuid
+  platform       OAuthPlatform
+  /// The user's ID on the external platform (athlete ID for Strava, user ID for RWGPS).
+  externalUserId String        @map("external_user_id")
+  accessToken    String        @map("access_token")
+  /// Only Strava uses a refresh token; null for platforms that issue non-expiring tokens.
+  refreshToken   String?       @map("refresh_token")
+  /// Token expiry — null for platforms that issue non-expiring tokens (e.g. RWGPS).
+  expiresAt      DateTime?     @map("expires_at") @db.Timestamptz()
+  scope          String?
+  userName       String?       @map("user_name")
+  userAvatar     String?       @map("user_avatar")
+  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt      DateTime      @updatedAt @map("updated_at") @db.Timestamptz()
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@map("strava_tokens")
-}
-
-model RidewithgpsToken {
-  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId      String   @unique @map("user_id") @db.Uuid
-  rwgpsUserId Int      @unique @map("rwgps_user_id")
-  accessToken String   @map("access_token")
-  userName    String?  @map("user_name")
-  userAvatar  String?  @map("user_avatar")
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz()
-  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz()
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("ridewithgps_tokens")
+  @@unique([userId, platform])
+  @@unique([platform, externalUserId])
+  @@map("oauth_tokens")
 }
 
 model Activity {

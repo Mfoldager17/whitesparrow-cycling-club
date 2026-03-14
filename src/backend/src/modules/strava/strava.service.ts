@@ -8,7 +8,7 @@ import {
 import { createHmac, timingSafeEqual } from 'crypto';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../database/prisma.service';
-import { StravaToken } from '@prisma/client';
+import { OAuthToken } from '@prisma/client';
 
 interface StravaTokenResponse {
   access_token: string;
@@ -124,35 +124,40 @@ export class StravaService {
 
     const data = (await res.json()) as StravaTokenResponse;
 
-    await this.prisma.stravaToken.upsert({
-      where: { userId },
+    await this.prisma.oAuthToken.upsert({
+      where: { userId_platform: { userId, platform: 'strava' } },
       update: {
-        athleteId: String(data.athlete.id),
+        externalUserId: String(data.athlete.id),
         accessToken: data.access_token,
         refreshToken: data.refresh_token,
         expiresAt: new Date(data.expires_at * 1000),
-        athleteName: `${data.athlete.firstname} ${data.athlete.lastname}`.trim(),
-        athleteAvatar: data.athlete.profile,
+        scope: 'read,activity:read',
+        userName: `${data.athlete.firstname} ${data.athlete.lastname}`.trim(),
+        userAvatar: data.athlete.profile,
       },
       create: {
         userId,
-        athleteId: String(data.athlete.id),
+        platform: 'strava',
+        externalUserId: String(data.athlete.id),
         accessToken: data.access_token,
         refreshToken: data.refresh_token,
         expiresAt: new Date(data.expires_at * 1000),
-        athleteName: `${data.athlete.firstname} ${data.athlete.lastname}`.trim(),
-        athleteAvatar: data.athlete.profile,
+        scope: 'read,activity:read',
+        userName: `${data.athlete.firstname} ${data.athlete.lastname}`.trim(),
+        userAvatar: data.athlete.profile,
       },
     });
   }
 
   /** Return the stored token for a user, refreshing if it's expiring within 5 min */
-  async getValidToken(userId: string): Promise<StravaToken> {
-    const token = await this.prisma.stravaToken.findUnique({ where: { userId } });
+  async getValidToken(userId: string): Promise<OAuthToken> {
+    const token = await this.prisma.oAuthToken.findUnique({
+      where: { userId_platform: { userId, platform: 'strava' } },
+    });
     if (!token) throw new NotFoundException('No Strava connection found');
 
     const fiveMinutes = 5 * 60 * 1000;
-    if (token.expiresAt.getTime() - Date.now() > fiveMinutes) {
+    if (token.expiresAt && token.expiresAt.getTime() - Date.now() > fiveMinutes) {
       return token;
     }
 
@@ -172,8 +177,8 @@ export class StravaService {
 
     const data = (await res.json()) as Omit<StravaTokenResponse, 'athlete'>;
 
-    return this.prisma.stravaToken.update({
-      where: { userId },
+    return this.prisma.oAuthToken.update({
+      where: { userId_platform: { userId, platform: 'strava' } },
       data: {
         accessToken: data.access_token,
         refreshToken: data.refresh_token,
@@ -184,25 +189,27 @@ export class StravaService {
 
   /** Return stored connection status for the user */
   async getStatus(userId: string) {
-    const token = await this.prisma.stravaToken.findUnique({ where: { userId } });
+    const token = await this.prisma.oAuthToken.findUnique({
+      where: { userId_platform: { userId, platform: 'strava' } },
+    });
     if (!token) return { connected: false };
     return {
       connected: true,
-      athleteName: token.athleteName,
-      athleteAvatar: token.athleteAvatar,
+      athleteName: token.userName,
+      athleteAvatar: token.userAvatar,
     };
   }
 
-  /** Disconnect — delete stored tokens */
+  /** Disconnect — delete stored token */
   async disconnect(userId: string): Promise<void> {
-    await this.prisma.stravaToken.deleteMany({ where: { userId } });
+    await this.prisma.oAuthToken.deleteMany({ where: { userId, platform: 'strava' } });
   }
 
   /** List the user's Strava routes (cycling only) */
   async listRoutes(userId: string): Promise<StravaRoute[]> {
     const token = await this.getValidToken(userId);
     const res = await fetch(
-      `https://www.strava.com/api/v3/athletes/${token.athleteId}/routes?per_page=50`,
+      `https://www.strava.com/api/v3/athletes/${token.externalUserId}/routes?per_page=50`,
       { headers: { Authorization: `Bearer ${token.accessToken}` } },
     );
     if (!res.ok) throw new BadRequestException('Failed to fetch Strava routes');

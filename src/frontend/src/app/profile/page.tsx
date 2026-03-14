@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { useUsersControllerGetMe, useUsersControllerUpdateMe } from '@/api/generated/users/users';
 import StravaConnect from '@/components/strava/StravaConnect';
+import RidewithgpsConnect from '@/components/ridewithgps/RidewithgpsConnect';
 
 const schema = z.object({
   fullName: z.string().min(2),
@@ -97,6 +98,10 @@ export default function ProfilePage() {
 
       <div className="mt-6">
         <StravaConnect />
+      </div>
+
+      <div className="mt-6">
+        <RidewithgpsConnect />
       </div>
 
       <div className="mt-6 sm:hidden">

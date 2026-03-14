@@ -5,6 +5,7 @@ import {
   HttpCode,
   HttpStatus,
   Logger,
+  NotFoundException,
   Param,
   Post,
   Query,
@@ -104,7 +105,7 @@ export class RidewithgpsController {
     @Param('activityId') activityId: string,
   ) {
     const activity = await this.prisma.activity.findUnique({ where: { id: activityId } });
-    if (!activity) throw new Error('Activity not found');
+    if (!activity) throw new NotFoundException('Activity not found');
 
     const gpxBuffer = await this.rwgps.downloadRouteGpx(user.id, routeId);
 
