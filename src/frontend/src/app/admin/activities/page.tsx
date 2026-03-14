@@ -53,7 +53,7 @@ export default function AdminActivitiesPage() {
         </button>
       </div>
 
-      <div className="card overflow-hidden p-0">
+      <div className="card overflow-y-hidden overflow-x-auto p-0">
         <table className="min-w-full divide-y divide-gray-100">
           <thead className="bg-gray-50">
             <tr>
