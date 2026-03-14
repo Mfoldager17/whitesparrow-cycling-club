@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { useAuth } from '@/contexts/AuthContext';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { useUsersControllerGetMe, useUsersControllerUpdateMe } from '@/api/generated/users/users';
+import StravaConnect from '@/components/strava/StravaConnect';
 
 const schema = z.object({
   fullName: z.string().min(2),
@@ -30,9 +31,9 @@ export default function ProfilePage() {
     values: data
       ? {
           fullName: data.fullName,
-          phone: data.phone ?? '',
-          bio: data.bio ?? '',
-          avatarUrl: data.avatarUrl ?? '',
+          phone: (data.phone as unknown as string) ?? '',
+          bio: (data.bio as unknown as string) ?? '',
+          avatarUrl: (data.avatarUrl as unknown as string) ?? '',
         }
       : undefined,
   });
@@ -93,6 +94,10 @@ export default function ProfilePage() {
           {isPending ? 'Gemmer…' : 'Gem ændringer'}
         </button>
       </form>
+
+      <div className="mt-6">
+        <StravaConnect />
+      </div>
     </div>
   );
 }

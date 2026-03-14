@@ -6,6 +6,7 @@ import { UsersModule } from './modules/users/users.module';
 import { ActivitiesModule } from './modules/activities/activities.module';
 import { RegistrationsModule } from './modules/registrations/registrations.module';
 import { CommentsModule } from './modules/comments/comments.module';
+import { StravaModule } from './modules/strava/strava.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { CommentsModule } from './modules/comments/comments.module';
     ActivitiesModule,
     RegistrationsModule,
     CommentsModule,
+    StravaModule,
   ],
 })
 export class AppModule {}

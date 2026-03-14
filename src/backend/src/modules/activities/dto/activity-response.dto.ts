@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { RouteDataDto } from './route-response.dto';
 
 export class ActivityResponseDto {
   @ApiProperty() id: string;
@@ -25,4 +26,5 @@ export class ActivityWithStatsDto extends ActivityResponseDto {
   @ApiProperty() organizerName: string;
   @ApiProperty() registeredCount: number;
   @ApiProperty() waitlistCount: number;
+  @ApiProperty({ type: RouteDataDto, nullable: true }) routeData: RouteDataDto | null;
 }
