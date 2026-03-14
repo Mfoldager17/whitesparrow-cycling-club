@@ -51,10 +51,11 @@ model User {
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz()
   updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz()
 
-  activities    Activity[]     @relation("ActivityCreator")
-  registrations Registration[]
-  comments      Comment[]
-  stravaToken   StravaToken?
+  activities       Activity[]     @relation("ActivityCreator")
+  registrations    Registration[]
+  comments         Comment[]
+  stravaToken      StravaToken?
+  ridewithgpsToken RidewithgpsToken?
 
   @@map("users")
 }
@@ -75,6 +76,21 @@ model StravaToken {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("strava_tokens")
+}
+
+model RidewithgpsToken {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId      String   @unique @map("user_id") @db.Uuid
+  rwgpsUserId Int      @unique @map("rwgps_user_id")
+  accessToken String   @map("access_token")
+  userName    String?  @map("user_name")
+  userAvatar  String?  @map("user_avatar")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz()
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("ridewithgps_tokens")
 }
 
 model Activity {
