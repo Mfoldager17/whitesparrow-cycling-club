@@ -66,43 +66,62 @@ function UsersIcon({ className }: { className?: string }) {
   );
 }
 
+function LogOutIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <polyline points="16 17 21 12 16 7" />
+      <line x1="21" y1="12" x2="9" y2="12" />
+    </svg>
+  );
+}
+
 const adminSubItems = [
   { href: '/admin/activities', label: 'Aktiviteter', icon: CalendarIcon },
   { href: '/admin/users', label: 'Medlemmer', icon: UsersIcon },
 ];
 
 export function BottomNav() {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, logout } = useAuth();
   const pathname = usePathname();
   const [adminOpen, setAdminOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
 
-  // Close submenu on route change
+  // Close all submenus on route change
   useEffect(() => {
     setAdminOpen(false);
+    setProfileOpen(false);
   }, [pathname]);
 
   if (!user) return null;
 
   const isAdminRoute = pathname.startsWith('/admin');
+  const isProfileRoute = pathname.startsWith('/profile');
 
   const items = [
     { href: '/', label: 'Hjem', icon: HomeIcon },
     { href: '/activities', label: 'Aktiviteter', icon: CalendarIcon },
     { href: '/my-rides', label: 'Mine ture', icon: BikeIcon },
-    { href: '/profile', label: 'Profil', icon: UserIcon },
   ];
+
+  const anyOpen = adminOpen || profileOpen;
+
+  function handleLogout() {
+    setProfileOpen(false);
+    logout();
+  }
 
   return (
     <>
-      {/* Backdrop – closes the admin submenu when tapped */}
-      {adminOpen && (
+      {/* Backdrop – closes whichever submenu is open */}
+      {anyOpen && (
         <div
           className="sm:hidden fixed inset-0 z-30"
-          onClick={() => setAdminOpen(false)}
+          onClick={() => { setAdminOpen(false); setProfileOpen(false); }}
         />
       )}
 
-      {/* Admin sub-menu sheet – slides up above the bottom bar */}
+      {/* Admin sub-menu sheet */}
       {isAdmin && (
         <div
           className={clsx(
@@ -138,6 +157,39 @@ export function BottomNav() {
         </div>
       )}
 
+      {/* Profile sub-menu sheet */}
+      <div
+        className={clsx(
+          'sm:hidden fixed inset-x-0 z-40 transition-all duration-200 ease-in-out',
+          profileOpen
+            ? 'bottom-16 opacity-100 pointer-events-auto'
+            : 'bottom-16 opacity-0 pointer-events-none translate-y-2',
+        )}
+      >
+        <div className="mx-4 mb-2 rounded-2xl border border-gray-100 bg-white shadow-lg overflow-hidden">
+          <p className="px-4 pt-3 pb-1 text-xs font-semibold uppercase tracking-wide text-gray-400">
+            Konto
+          </p>
+          <Link
+            href="/profile"
+            className={clsx(
+              'flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors',
+              isProfileRoute ? 'bg-brand-50 text-brand-700' : 'text-gray-700 hover:bg-gray-50',
+            )}
+          >
+            <UserIcon className={clsx('h-5 w-5', isProfileRoute ? 'stroke-brand-700' : 'stroke-gray-500')} />
+            Profil
+          </Link>
+          <button
+            onClick={handleLogout}
+            className="flex w-full items-center gap-3 px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
+          >
+            <LogOutIcon className="h-5 w-5 stroke-red-500" />
+            Log ud
+          </button>
+        </div>
+      </div>
+
       {/* Bottom navigation bar */}
       <nav className="sm:hidden fixed bottom-0 inset-x-0 z-40 border-t border-gray-200 bg-white/95 backdrop-blur-sm">
         <div className="flex h-16 items-stretch">
@@ -158,10 +210,27 @@ export function BottomNav() {
             );
           })}
 
+          {/* Profile tab with submenu trigger */}
+          <button
+            onClick={() => { setProfileOpen((v) => !v); setAdminOpen(false); }}
+            className={clsx(
+              'flex flex-1 flex-col items-center justify-center gap-0.5 text-xs font-medium transition-colors',
+              isProfileRoute || profileOpen ? 'text-brand-700' : 'text-gray-500 hover:text-gray-900',
+            )}
+          >
+            <UserIcon
+              className={clsx(
+                'h-5 w-5',
+                isProfileRoute || profileOpen ? 'stroke-brand-700' : 'stroke-gray-500',
+              )}
+            />
+            <span>Profil</span>
+          </button>
+
           {/* Admin tab with submenu trigger */}
           {isAdmin && (
             <button
-              onClick={() => setAdminOpen((v) => !v)}
+              onClick={() => { setAdminOpen((v) => !v); setProfileOpen(false); }}
               className={clsx(
                 'flex flex-1 flex-col items-center justify-center gap-0.5 text-xs font-medium transition-colors',
                 isAdminRoute || adminOpen ? 'text-brand-700' : 'text-gray-500 hover:text-gray-900',
