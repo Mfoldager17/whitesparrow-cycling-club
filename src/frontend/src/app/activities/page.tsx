@@ -87,13 +87,13 @@ export default function ActivitiesPage() {
   return (
     <div className="max-w-5xl mx-auto px-4 py-10 sm:px-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-start justify-between gap-4 mb-8">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Aktiviteter</h1>
           <p className="text-sm text-gray-500 mt-1">Kommende ture og klubarrangementer</p>
         </div>
         {user && (
-          <button onClick={() => setShowForm(true)} className="btn-primary">
+          <button onClick={() => setShowForm(true)} className="btn-primary shrink-0">
             + Ny aktivitet
           </button>
         )}
