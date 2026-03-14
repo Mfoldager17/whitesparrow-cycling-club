@@ -10,6 +10,7 @@ Full-stack monorepo for the Whitesparrow Cycling Club platform — a private web
 | Frontend | Next.js 16 (App Router) · Tailwind CSS · React Query · Orval |
 | Language | TypeScript throughout                                   |
 | Database | PostgreSQL (local via Docker)                           |
+| Storage  | MinIO (S3-compatible, local via Docker)                 |
 
 ---
 
@@ -20,7 +21,7 @@ whitesparrow-cycling-club/
 ├── src/
 │   ├── backend/          # NestJS REST API (port 3001)
 │   └── frontend/         # Next.js app (port 3000)
-├── docker-compose.yml    # PostgreSQL database
+├── docker-compose.yml    # PostgreSQL + MinIO
 └── package.json          # npm workspaces root
 ```
 
@@ -29,7 +30,7 @@ whitesparrow-cycling-club/
 ## Prerequisites
 
 - [Node.js](https://nodejs.org/) v20+
-- [Docker](https://www.docker.com/) (for the database)
+- [Docker](https://www.docker.com/) (for the database and object storage)
 - npm v10+
 
 ---
@@ -44,13 +45,15 @@ cd whitesparrow-cycling-club
 npm install
 ```
 
-### 2. Start the database
+### 2. Start the database and object storage
 
 ```bash
 docker-compose up -d
 ```
 
-This starts a PostgreSQL instance accessible at `localhost:5432`.
+This starts:
+- **PostgreSQL** at `localhost:5432`
+- **MinIO** at `localhost:9000` (S3-compatible object storage for GPX files). The MinIO admin console is available at `localhost:9001`.
 
 ### 3. Configure environment variables
 
@@ -68,6 +71,16 @@ JWT_SECRET=change-me-in-production-use-a-long-random-string
 JWT_EXPIRES_IN=15m
 JWT_REFRESH_SECRET=change-me-refresh-secret
 JWT_REFRESH_EXPIRES_IN=7d
+
+MINIO_ENDPOINT=http://localhost:9000
+MINIO_ACCESS_KEY=minioadmin
+MINIO_SECRET_KEY=minioadmin_dev
+MINIO_BUCKET=whitesparrow
+
+# Strava OAuth — get credentials from https://www.strava.com/settings/api
+STRAVA_CLIENT_ID=your_strava_client_id
+STRAVA_CLIENT_SECRET=your_strava_client_secret
+STRAVA_REDIRECT_URI=http://localhost:3001/strava/callback
 
 PORT=3001
 ```
@@ -104,11 +117,12 @@ Start both backend and frontend with a single command from the root:
 npm run dev
 ```
 
-| Service     | URL                              |
-|-------------|----------------------------------|
-| Frontend    | http://localhost:3000            |
-| Backend API | http://localhost:3001            |
-| Swagger UI  | http://localhost:3001/api/docs   |
+| Service          | URL                              |
+|------------------|----------------------------------|
+| Frontend         | http://localhost:3000            |
+| Backend API      | http://localhost:3001            |
+| Swagger UI       | http://localhost:3001/api/docs   |
+| MinIO Console    | http://localhost:9001            |
 
 Or run them individually:
 
@@ -158,118 +172,56 @@ cd src/frontend && npm run start
 
 ### Backend
 
-| Module          | Description                                      |
-|-----------------|--------------------------------------------------|
-| `auth`          | JWT login / register / token refresh             |
-| `users`         | User profiles and admin management               |
-| `activities`    | Rides (members) and club events (admins)         |
-| `registrations` | Sign-up, waitlist, and cancellation logic        |
-| `comments`      | Activity comments                                |
+| Module          | Description                                                    |
+|-----------------|----------------------------------------------------------------|
+| `auth`          | JWT login / register / token refresh                           |
+| `users`         | User profiles and admin management                             |
+| `activities`    | Rides (members) and club events (admins)                       |
+| `registrations` | Sign-up, waitlist, and cancellation logic                      |
+| `comments`      | Activity comments                                              |
+| `storage`       | MinIO S3 client — upload, delete, presigned URL generation     |
+| `strava`        | Strava OAuth 2.0 integration with persistent per-user tokens   |
 
 ### Frontend Pages
 
-| Route                   | Description                          |
-|-------------------------|--------------------------------------|
-| `/`                     | Landing page                         |
-| `/login`                | Log in                               |
-| `/register`             | Create account                       |
-| `/activities`           | Calendar overview of upcoming rides  |
-| `/activities/[id]`      | Activity detail, sign-up, comments   |
-| `/my-rides`             | Your personal ride calendar          |
-| `/profile`              | Edit your profile                    |
-| `/admin/users`          | Admin: manage members                |
-| `/admin/activities`     | Admin: manage all activities         |
+| Route                   | Description                                          |
+|-------------------------|------------------------------------------------------|
+| `/`                     | Landing page                                         |
+| `/login`                | Log in                                               |
+| `/register`             | Create account                                       |
+| `/activities`           | Calendar overview of upcoming rides                  |
+| `/activities/[id]`      | Activity detail, sign-up, comments, GPX route        |
+| `/my-rides`             | Your personal ride calendar                          |
+| `/profile`              | Edit your profile · Connect / disconnect Strava      |
+| `/admin/users`          | Admin: manage members                                |
+| `/admin/activities`     | Admin: manage all activities                         |
 
+---
 
-## Tech Stack
+## GPX Routes
 
-| Layer    | Technology                                 |
-|----------|--------------------------------------------|
-| Backend  | NestJS · Prisma · PostgreSQL · Swagger     |
-| Frontend | Next.js 16 · Tailwind CSS · React Query · Orval |
-| Language | TypeScript (everywhere)                    |
+Each activity can have a GPX route attached to it. Activity creators and admins can:
 
-## Project Structure
+- **Upload a `.gpx` file** directly from their computer.
+- **Import a route from Strava** (requires connecting a Strava account first).
 
-```
-whitesparrow-cycling-club/
-├── src/
-│   ├── backend/          # NestJS REST API
-│   └── frontend/         # Next.js App Router
-├── docker-compose.yml    # PostgreSQL database
-└── package.json          # npm workspaces root
-```
+Once a route is attached the activity detail page shows:
+- An interactive **Leaflet map** with the track drawn on a CyclOSM tile layer.
+- An **elevation profile chart** (distance vs. elevation) with gain/loss/max/min stats.
+- Key stats: total distance, elevation gain, elevation loss, and maximum elevation.
 
-## Getting Started
+GPX files are stored in MinIO (S3-compatible object storage).
 
-### 1. Start the database
+---
 
-```bash
-docker-compose up -d
-```
+## Strava Integration
 
-### 2. Install dependencies
+Users can connect their Strava account on the **Profile** page. Once connected:
 
-```bash
-npm install
-```
+- Tokens are stored securely in the database and **auto-refreshed** when they are about to expire.
+- Users can **import any of their Strava cycling routes** directly onto an activity — no GPX download/upload needed.
+- Users can disconnect their Strava account at any time.
 
-### 3. Configure environment variables
+The OAuth flow uses an **HMAC-SHA256 signed state parameter** with a 10-minute expiry to prevent CSRF attacks.
 
-```bash
-cp src/backend/.env.example src/backend/.env
-cp src/frontend/.env.example src/frontend/.env.local
-```
-
-Fill in the values in the `.env` files.
-
-### 4. Run database migrations
-
-```bash
-cd src/backend
-npx prisma migrate dev --name init
-```
-
-### 5. Start development servers
-
-```bash
-# From root — starts both backend and frontend
-npm run dev
-```
-
-- Backend API: http://localhost:3001
-- Swagger UI: http://localhost:3001/api/docs
-- Frontend:   http://localhost:3000
-
-### 6. Regenerate API types (after backend changes)
-
-```bash
-npm run generate:api
-```
-
-Orval reads the Swagger spec from `http://localhost:3001/api/docs-json` and regenerates the fully typed hooks in `src/frontend/src/api/generated/`.
-
-## Modules
-
-### Backend
-
-| Module          | Description                              |
-|-----------------|------------------------------------------|
-| `auth`          | JWT login/register, refresh tokens       |
-| `users`         | User profiles and admin management       |
-| `activities`    | Events (admin) and rides (members)       |
-| `registrations` | Sign-up, waitlist, cancellation logic    |
-| `comments`      | Activity comments with soft delete       |
-
-### Frontend Pages
-
-| Route                      | Description                  |
-|----------------------------|------------------------------|
-| `/`                        | Landing page                 |
-| `/login` · `/register`     | Authentication               |
-| `/activities`              | Browse upcoming activities   |
-| `/activities/[id]`         | Activity detail + sign-up    |
-| `/my-rides`                | My registrations             |
-| `/profile`                 | Edit profile                 |
-| `/admin/users`             | Admin: manage members        |
-| `/admin/activities`        | Admin: manage activities     |
+To enable Strava integration, register an API application at [strava.com/settings/api](https://www.strava.com/settings/api) and set the callback domain to `localhost` for local development. Add the credentials to `src/backend/.env` as shown above.
