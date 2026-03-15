@@ -1,5 +1,6 @@
 'use client';
 
+import { useRef } from 'react';
 import {
   Area,
   AreaChart,
@@ -51,6 +52,32 @@ export default function ElevationProfile({
 
   const padding = Math.max(10, (maxElevationM - minElevationM) * 0.1);
 
+  // Y-axis width and chart margins must match what's passed to AreaChart/YAxis below
+  const MARGIN_LEFT = 0;
+  const MARGIN_RIGHT = 8;
+  const Y_AXIS_WIDTH = 52;
+
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const kmFromTouchX = (clientX: number): number | null => {
+    if (!containerRef.current) return null;
+    const rect = containerRef.current.getBoundingClientRect();
+    const chartLeft = rect.left + MARGIN_LEFT + Y_AXIS_WIDTH;
+    const chartRight = rect.right - MARGIN_RIGHT;
+    const chartWidth = chartRight - chartLeft;
+    if (chartWidth <= 0) return null;
+    const ratio = (clientX - chartLeft) / chartWidth;
+    if (ratio < 0 || ratio > 1) return null;
+    const minKm = data[0]?.km ?? 0;
+    const maxKm = data[data.length - 1]?.km ?? 0;
+    return minKm + ratio * (maxKm - minKm);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    const km = kmFromTouchX(e.touches[0].clientX);
+    if (km != null) onHoverDistKm?.(km);
+  };
+
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap gap-4 text-sm text-gray-600">
@@ -72,6 +99,12 @@ export default function ElevationProfile({
         </span>
       </div>
 
+      <div
+        ref={containerRef}
+        style={{ touchAction: 'none' }}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={() => onHoverDistKm?.(null)}
+      >
       <ResponsiveContainer width="100%" height={180}>
         <AreaChart
           data={data}
@@ -83,6 +116,13 @@ export default function ElevationProfile({
             }
           }}
           onMouseLeave={() => onHoverDistKm?.(null)}
+          onTouchMove={(state: any) => {
+            const km = state.activeLabel ?? state.activePayload?.[0]?.payload?.km;
+            if (km != null) {
+              onHoverDistKm?.(Number(km));
+            }
+          }}
+          onTouchEnd={() => onHoverDistKm?.(null)}
         >
           <defs>
             <linearGradient id="eleGrad" x1="0" y1="0" x2="0" y2="1">
@@ -133,6 +173,7 @@ export default function ElevationProfile({
           )}
         </AreaChart>
       </ResponsiveContainer>
+      </div>
     </div>
   );
 }
