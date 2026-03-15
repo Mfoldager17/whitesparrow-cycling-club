@@ -17,16 +17,29 @@ export default async function ActivitiesPage() {
 
   try {
     // Dynamic imports keep server-only code out of the client bundle.
-    const [{ activitiesControllerFindAll }, { getActivitiesControllerFindAllQueryKey }] =
-      await Promise.all([
-        import('@/api/generated-server/activities/activities'),
-        import('@/api/generated/activities/activities'),
-      ]);
+    const [
+      { activitiesControllerFindAll },
+      { getActivitiesControllerFindAllQueryKey },
+      { myRegistrationsControllerGetMyRegistrations },
+      { getMyRegistrationsControllerGetMyRegistrationsQueryKey },
+    ] = await Promise.all([
+      import('@/api/generated-server/activities/activities'),
+      import('@/api/generated/activities/activities'),
+      import('@/api/generated-server/registrations/registrations'),
+      import('@/api/generated/registrations/registrations'),
+    ]);
 
-    await queryClient.prefetchQuery({
-      queryKey: getActivitiesControllerFindAllQueryKey(),
-      queryFn: () => activitiesControllerFindAll(),
-    });
+    // Prefetch both queries used by ActivitiesClient in parallel.
+    await Promise.allSettled([
+      queryClient.prefetchQuery({
+        queryKey: getActivitiesControllerFindAllQueryKey(),
+        queryFn: () => activitiesControllerFindAll(),
+      }),
+      queryClient.prefetchQuery({
+        queryKey: getMyRegistrationsControllerGetMyRegistrationsQueryKey(),
+        queryFn: () => myRegistrationsControllerGetMyRegistrations(),
+      }),
+    ]);
   } catch {
     // Prefetch is best-effort: the client will fetch on mount if it fails
     // (e.g., generated files not yet created, backend unreachable, or user
