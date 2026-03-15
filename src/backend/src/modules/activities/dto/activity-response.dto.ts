@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { RouteDataDto } from './route-response.dto';
+import { SavedRouteDto } from '../../routes/dto/route.dto';
 
 export class ActivityResponseDto {
   @ApiProperty() id: string;
@@ -15,6 +16,7 @@ export class ActivityResponseDto {
   @ApiProperty({ enum: ['easy', 'moderate', 'hard', 'extreme'], nullable: true }) difficulty: string | null;
   @ApiProperty({ nullable: true, type: Number }) maxParticipants: number | null;
   @ApiProperty({ nullable: true, type: String }) routeUrl: string | null;
+  @ApiProperty({ nullable: true, type: String }) savedRouteId: string | null;
   @ApiProperty() isCancelled: boolean;
   @ApiProperty({ nullable: true, type: String }) cancellationReason: string | null;
   @ApiProperty() createdBy: string;
@@ -27,4 +29,5 @@ export class ActivityWithStatsDto extends ActivityResponseDto {
   @ApiProperty() registeredCount: number;
   @ApiProperty() waitlistCount: number;
   @ApiProperty({ type: RouteDataDto, nullable: true }) routeData: RouteDataDto | null;
+  @ApiProperty({ type: SavedRouteDto, nullable: true }) savedRoute: SavedRouteDto | null;
 }

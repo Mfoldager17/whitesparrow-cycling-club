@@ -37,6 +37,7 @@ export class ActivitiesService {
       difficulty: activity.difficulty,
       maxParticipants: activity.maxParticipants,
       routeUrl: activity.routeUrl,
+      savedRouteId: activity.savedRouteId ?? null,
       isCancelled: activity.isCancelled,
       cancellationReason: activity.cancellationReason,
       createdBy: activity.createdBy,
@@ -90,6 +91,7 @@ export class ActivitiesService {
       registeredCount: a.registrations.filter((r) => r.status === 'registered').length,
       waitlistCount: a.registrations.filter((r) => r.status === 'waitlisted').length,
       routeData: null,
+      savedRoute: null,
     }));
   }
 
@@ -100,9 +102,32 @@ export class ActivitiesService {
         creator: { select: { fullName: true } },
         registrations: { select: { status: true } },
         routeData: true,
+        savedRoute: true,
       },
     });
     if (!a) throw new NotFoundException('Activity not found');
+
+    let savedRouteData: ActivityWithStatsDto['savedRoute'] = null;
+    if (a.savedRoute) {
+      const sr = a.savedRoute;
+      savedRouteData = {
+        id: sr.id,
+        name: sr.name,
+        description: sr.description,
+        surface: sr.surface as any,
+        waypoints: sr.waypoints as any,
+        totalDistanceKm: sr.totalDistanceKm,
+        elevationGainM: sr.elevationGainM,
+        elevationLossM: sr.elevationLossM,
+        maxElevationM: sr.maxElevationM,
+        minElevationM: sr.minElevationM,
+        trackPoints: sr.trackPoints as any,
+        boundingBox: sr.boundingBox as any,
+        createdBy: sr.createdBy,
+        createdAt: sr.createdAt,
+        updatedAt: sr.updatedAt,
+      };
+    }
 
     return {
       ...this.toDto(a),
@@ -110,6 +135,7 @@ export class ActivitiesService {
       registeredCount: a.registrations.filter((r) => r.status === 'registered').length,
       waitlistCount: a.registrations.filter((r) => r.status === 'waitlisted').length,
       routeData: a.routeData ? this.toRouteDto(a.routeData) : null,
+      savedRoute: savedRouteData,
     };
   }
 
@@ -134,6 +160,7 @@ export class ActivitiesService {
         difficulty: dto.difficulty ?? null,
         maxParticipants: dto.maxParticipants ?? null,
         routeUrl: dto.routeUrl ?? null,
+        savedRouteId: dto.savedRouteId ?? null,
       },
     });
 
@@ -176,6 +203,7 @@ export class ActivitiesService {
         ...(dto.difficulty !== undefined && { difficulty: dto.difficulty }),
         ...(dto.maxParticipants !== undefined && { maxParticipants: dto.maxParticipants }),
         ...(dto.routeUrl !== undefined && { routeUrl: dto.routeUrl }),
+        ...(dto.savedRouteId !== undefined && { savedRouteId: dto.savedRouteId ?? null }),
       },
     });
 

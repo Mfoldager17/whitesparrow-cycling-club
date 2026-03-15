@@ -39,6 +39,12 @@ enum OAuthPlatform {
   rwgps
 }
 
+enum RouteSurface {
+  paved
+  unpaved
+  auto
+}
+
 // ─────────────────────────────────────────────────────────
 // Models
 // ─────────────────────────────────────────────────────────
@@ -60,6 +66,7 @@ model User {
   registrations Registration[]
   comments      Comment[]
   oauthTokens   OAuthToken[]
+  savedRoutes   SavedRoute[]   @relation("RouteCreator")
 
   @@map("users")
 }
@@ -104,6 +111,7 @@ model Activity {
   difficulty         DifficultyLevel?
   maxParticipants    Int?             @map("max_participants")
   routeUrl           String?          @map("route_url")
+  savedRouteId       String?          @map("saved_route_id") @db.Uuid
   isCancelled        Boolean          @default(false) @map("is_cancelled")
   cancellationReason String?          @map("cancellation_reason")
   createdAt          DateTime         @default(now()) @map("created_at") @db.Timestamptz()
@@ -113,6 +121,7 @@ model Activity {
   registrations Registration[]
   comments      Comment[]
   routeData     RouteData?
+  savedRoute    SavedRoute?    @relation(fields: [savedRouteId], references: [id], onDelete: SetNull)
 
   @@map("activities")
 }
@@ -165,4 +174,27 @@ model Comment {
   user     User     @relation(fields: [userId], references: [id])
 
   @@map("comments")
+}
+
+model SavedRoute {
+  id              String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  createdBy       String       @map("created_by") @db.Uuid
+  name            String
+  description     String?
+  surface         RouteSurface @default(auto)
+  waypoints       Json
+  totalDistanceKm Float        @map("total_distance_km")
+  elevationGainM  Float        @map("elevation_gain_m")
+  elevationLossM  Float        @map("elevation_loss_m")
+  maxElevationM   Float        @map("max_elevation_m")
+  minElevationM   Float        @map("min_elevation_m")
+  trackPoints     Json         @map("track_points")
+  boundingBox     Json         @map("bounding_box")
+  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt       DateTime     @updatedAt @map("updated_at") @db.Timestamptz()
+
+  creator    User       @relation("RouteCreator", fields: [createdBy], references: [id])
+  activities Activity[]
+
+  @@map("saved_routes")
 }

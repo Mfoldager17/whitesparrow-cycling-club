@@ -6,6 +6,7 @@ import {
   IsOptional,
   IsString,
   IsUrl,
+  IsUUID,
   Min,
   MinLength,
 } from 'class-validator';
@@ -71,4 +72,9 @@ export class CreateActivityDto {
   @IsUrl()
   @IsOptional()
   routeUrl?: string;
+
+  @ApiProperty({ example: 'uuid-of-saved-route', required: false, nullable: true })
+  @IsUUID()
+  @IsOptional()
+  savedRouteId?: string | null;
 }

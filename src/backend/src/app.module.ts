@@ -8,6 +8,7 @@ import { RegistrationsModule } from './modules/registrations/registrations.modul
 import { CommentsModule } from './modules/comments/comments.module';
 import { StravaModule } from './modules/strava/strava.module';
 import { RidewithgpsModule } from './modules/ridewithgps/ridewithgps.module';
+import { RoutesModule } from './modules/routes/routes.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { RidewithgpsModule } from './modules/ridewithgps/ridewithgps.module';
     CommentsModule,
     StravaModule,
     RidewithgpsModule,
+    RoutesModule,
   ],
 })
 export class AppModule {}
