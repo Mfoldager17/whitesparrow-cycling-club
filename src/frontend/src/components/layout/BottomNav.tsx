@@ -101,6 +101,7 @@ export function BottomNav() {
   const items = [
     { href: '/', label: 'Hjem', icon: HomeIcon },
     { href: '/activities', label: 'Aktiviteter', icon: CalendarIcon },
+    { href: '/routes', label: 'Ruter', icon: BikeIcon },
     { href: '/my-rides', label: 'Mine ture', icon: BikeIcon },
   ];
 

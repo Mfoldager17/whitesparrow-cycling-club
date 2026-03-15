@@ -13,9 +13,13 @@ interface RwgpsRoute {
 interface Props {
   activityId: string;
   onImported: () => void;
+  /** 'button' (default): floating popover triggered by a button.
+   *  'inline': standalone panel that auto-loads and renders inline. */
+  mode?: 'button' | 'inline';
+  onClose?: () => void;
 }
 
-export default function RidewithgpsRouteImport({ activityId, onImported }: Props) {
+export default function RidewithgpsRouteImport({ activityId, onImported, mode = 'button', onClose }: Props) {
   const [connected, setConnected] = useState<boolean | null>(null);
   const [routes, setRoutes] = useState<RwgpsRoute[] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -32,6 +36,14 @@ export default function RidewithgpsRouteImport({ activityId, onImported }: Props
       })
       .catch(() => setConnected(false));
   }, []);
+
+  // In inline mode, auto-load routes as soon as we know the user is connected
+  useEffect(() => {
+    if (mode === 'inline' && connected === true) {
+      loadRoutes();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, connected]);
 
   async function loadRoutes() {
     setLoading(true);
@@ -53,7 +65,7 @@ export default function RidewithgpsRouteImport({ activityId, onImported }: Props
     setError(null);
     try {
       await apiClient.post(`/ridewithgps/routes/${routeId}/import/${activityId}`);
-      setOpen(false);
+      if (mode === 'button') setOpen(false);
       onImported();
     } catch {
       setError('Import fejlede. Prøv igen.');
@@ -64,6 +76,60 @@ export default function RidewithgpsRouteImport({ activityId, onImported }: Props
 
   if (connected === null || !connected) return null;
 
+  // ── Shared route list ──────────────────────────────────────────────────────
+  const routeList = (
+    <>
+      {loading && <p className="text-sm text-gray-500 py-2">Henter ruter fra RideWithGPS…</p>}
+      {error && <p className="text-xs text-red-600">{error}</p>}
+      {routes !== null && routes.length === 0 && (
+        <p className="text-sm text-gray-400 text-center py-4">
+          Ingen ruter fundet på din RideWithGPS-konto.
+        </p>
+      )}
+      {routes !== null && routes.length > 0 && (
+        <ul className="space-y-2 max-h-80 overflow-y-auto pr-0.5">
+          {routes.map((r) => (
+            <li key={r.id} className="rounded-xl border-2 border-gray-200 bg-white px-4 py-3 space-y-2.5">
+              <div className="flex items-start gap-3 min-w-0">
+                <span className="text-xl shrink-0 mt-0.5" aria-hidden>🚲</span>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-gray-900 truncate mb-1">{r.name}</p>
+                  <div className="flex flex-wrap gap-3 text-sm">
+                    <span className="font-semibold text-gray-900">{(r.distance / 1000).toFixed(1)} km</span>
+                    <span className="text-green-700">↑ {Math.round(r.elevation_gain)} m</span>
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => handleImport(r.id)}
+                disabled={importing !== null}
+                className="btn-primary text-sm w-full disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {importing === r.id ? 'Importerer…' : 'Brug denne'}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </>
+  );
+
+  // ── Inline mode ────────────────────────────────────────────────────────────
+  if (mode === 'inline') {
+    return (
+      <div className="rounded-xl border border-brand-100 bg-brand-50/40 p-4 space-y-3">
+        <p className="text-sm font-medium text-gray-700">Vælg en RideWithGPS-rute</p>
+        {routeList}
+        {onClose && (
+          <button onClick={onClose} className="btn-secondary text-sm w-full">
+            Annuller
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  // ── Button mode (floating popover) ─────────────────────────────────────────
   return (
     <div className="relative">
       <button
@@ -86,34 +152,9 @@ export default function RidewithgpsRouteImport({ activityId, onImported }: Props
             </span>
             <button onClick={() => setOpen(false)} className="text-gray-400 hover:text-gray-600 text-lg leading-none">×</button>
           </div>
-
-          {error && <p className="px-4 py-2 text-xs text-red-600">{error}</p>}
-
-          {routes.length === 0 ? (
-            <p className="px-4 py-6 text-sm text-gray-400 text-center">
-              Ingen ruter fundet på din RideWithGPS-konto.
-            </p>
-          ) : (
-            <ul className="divide-y divide-gray-100 max-h-72 overflow-y-auto">
-              {routes.map((r) => (
-                <li key={r.id} className="flex items-center justify-between gap-3 px-4 py-3">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">{r.name}</p>
-                    <p className="text-xs text-gray-500">
-                      {(r.distance / 1000).toFixed(1)} km &middot; ↑{Math.round(r.elevation_gain)} m
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => handleImport(r.id)}
-                    disabled={importing !== null}
-                    className="btn-primary text-xs py-1 px-3 shrink-0"
-                  >
-                    {importing === r.id ? 'Importerer…' : 'Brug denne'}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
+          <div className="p-3 space-y-3">
+            {routeList}
+          </div>
         </div>
       )}
     </div>

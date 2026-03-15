@@ -7,6 +7,7 @@ import { clsx } from 'clsx';
 
 const navLinks = [
   { href: '/activities', label: 'Aktiviteter' },
+  { href: '/routes', label: 'Ruter' },
   { href: '/my-rides', label: 'Mine ture' },
 ];
 
