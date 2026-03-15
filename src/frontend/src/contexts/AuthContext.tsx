@@ -17,6 +17,12 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+/** Builds a Set-Cookie string for the accessToken with the Secure flag on HTTPS. */
+function buildAuthCookie(token: string): string {
+  const secure = window.location.protocol === 'https:' ? '; Secure' : '';
+  return `accessToken=${token}; path=/; SameSite=Lax; max-age=86400${secure}`;
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
 
@@ -26,6 +32,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const userId = localStorage.getItem('userId');
     const role = localStorage.getItem('role') as 'member' | 'admin' | null;
     if (token && userId && role) {
+      // Keep the cookie in sync with localStorage so server components can
+      // read a valid token on the first server render after page refresh.
+      document.cookie = buildAuthCookie(token);
       setUser({ userId, role, accessToken: token });
     }
   }, []);
@@ -35,6 +44,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem('refreshToken', refreshToken);
     localStorage.setItem('userId', userId);
     localStorage.setItem('role', role);
+    // Mirror the token into a cookie so Next.js server components can read it
+    // via `cookies()` in server-fetch.ts for authenticated SSR prefetching.
+    document.cookie = buildAuthCookie(accessToken);
     setUser({ userId, role: role as 'member' | 'admin', accessToken });
   }
 
@@ -43,6 +55,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('userId');
     localStorage.removeItem('role');
+    // Clear the auth cookie.
+    document.cookie = 'accessToken=; path=/; max-age=0';
     setUser(null);
   }
 

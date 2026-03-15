@@ -20,6 +20,7 @@ src/backend/node_modules/.prisma/
 
 # Orval generated output (regenerated from Swagger at runtime)
 src/frontend/src/api/generated/
+src/frontend/src/api/generated-server/
 
 # IDE
 .vscode/settings.json

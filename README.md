@@ -151,7 +151,48 @@ Whenever the backend API changes, regenerate the typed frontend hooks:
 npm run generate:api
 ```
 
-This calls [Orval](https://orval.dev), which reads the OpenAPI spec from `http://localhost:3001/api/docs-json` and writes fully typed React Query hooks to `src/frontend/src/api/generated/`.
+This calls [Orval](https://orval.dev), which reads the OpenAPI spec from `http://localhost:3001/api/docs-json` and writes **two** sets of generated files:
+
+| Output | Path | Use |
+|--------|------|-----|
+| `whitesparrow` | `src/frontend/src/api/generated/` | React Query hooks (`useXxx`) for `'use client'` components |
+| `whitesparrow_server` | `src/frontend/src/api/generated-server/` | Plain async query functions for Next.js server components |
+
+Both outputs share the same model types from `src/api/generated/models/`.
+
+### SSR Prefetch Pattern
+
+Server component pages can prefetch data before rendering using the generated
+server functions together with `HydrationBoundary`:
+
+```tsx
+// src/app/activities/page.tsx
+import { HydrationBoundary, dehydrate } from '@tanstack/react-query';
+import { getQueryClient } from '@/lib/query-client';
+import { activitiesControllerFindAll } from '@/api/generated-server/activities/activities';
+import { getActivitiesControllerFindAllQueryKey } from '@/api/generated/activities/activities';
+import ActivitiesClient from './ActivitiesClient';
+
+export default async function ActivitiesPage() {
+  const queryClient = getQueryClient();
+
+  await queryClient.prefetchQuery({
+    queryKey: getActivitiesControllerFindAllQueryKey(),
+    queryFn: () => activitiesControllerFindAll(),
+  });
+
+  return (
+    <HydrationBoundary state={dehydrate(queryClient)}>
+      <ActivitiesClient />
+    </HydrationBoundary>
+  );
+}
+```
+
+**How authentication works server-side**: `AuthContext` writes the access token
+to a cookie (`accessToken`) alongside `localStorage` on login. The server-side
+fetch utility (`src/api/server-fetch.ts`) reads that cookie via Next.js
+`cookies()` so authenticated API calls work inside server components.
 
 ---
 
