@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import type { SavedRouteSummary } from '@/api/generated/routes/routes';
+import type { SavedRouteSummaryDto } from '@/api/generated/models/savedRouteSummaryDto';
 
 const SURFACE_LABELS: Record<string, { label: string; icon: string }> = {
   auto: { label: 'Auto', icon: '🚲' },
@@ -11,7 +11,7 @@ const SURFACE_LABELS: Record<string, { label: string; icon: string }> = {
 
 // ─── Shared stat pills used by both modes ─────────────────────────────────────
 
-function RouteStats({ route }: { route: SavedRouteSummary }) {
+function RouteStats({ route }: { route: SavedRouteSummaryDto }) {
   return (
     <div className="flex flex-wrap gap-3 text-sm text-gray-600">
       <span className="font-semibold text-gray-900">{route.totalDistanceKm} km</span>
@@ -25,7 +25,7 @@ function RouteStats({ route }: { route: SavedRouteSummary }) {
 
 interface RouteCardLinkProps {
   mode: 'link';
-  route: SavedRouteSummary;
+  route: SavedRouteSummaryDto;
   onDelete?: (e: React.MouseEvent) => void;
   deleting?: boolean;
 }
@@ -34,7 +34,7 @@ interface RouteCardLinkProps {
 
 interface RouteCardSelectableProps {
   mode: 'selectable';
-  route: SavedRouteSummary;
+  route: SavedRouteSummaryDto;
   selected: boolean;
   onSelect: () => void;
 }

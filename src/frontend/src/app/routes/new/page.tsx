@@ -9,10 +9,10 @@ import {
   useRoutesControllerPlan,
   useRoutesControllerCreate,
   getRoutesControllerFindAllQueryKey,
-  type PlannedRoute,
-  type RouteSurface,
-  type Waypoint,
 } from '@/api/generated/routes/routes';
+import type { PlannedRouteDto } from '@/api/generated/models/plannedRouteDto';
+import type { PlanRouteDtoSurface } from '@/api/generated/models/planRouteDtoSurface';
+import type { WaypointDto } from '@/api/generated/models/waypointDto';
 
 const RoutePlannerMap = dynamic(() => import('@/components/routes/RoutePlannerMap'), { ssr: false });
 
@@ -28,9 +28,9 @@ export default function NewRoutePage() {
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [surface, setSurface] = useState<RouteSurface>('auto');
-  const [waypoints, setWaypoints] = useState<Waypoint[]>([]);
-  const [plannedRoute, setPlannedRoute] = useState<PlannedRoute | null>(null);
+  const [surface, setSurface] = useState<PlanRouteDtoSurface>('auto');
+  const [waypoints, setWaypoints] = useState<WaypointDto[]>([]);
+  const [plannedRoute, setPlannedRoute] = useState<PlannedRouteDto | null>(null);
   const [planError, setPlanError] = useState<string | null>(null);
   const [hoveredDistKm, setHoveredDistKm] = useState<number | null>(null);
 
@@ -41,7 +41,7 @@ export default function NewRoutePage() {
 
   // ── Auto-plan whenever waypoints or surface changes (debounced) ──
   const triggerPlan = useCallback(
-    (wps: Waypoint[], suf: RouteSurface) => {
+    (wps: WaypointDto[], suf: PlanRouteDtoSurface) => {
       if (planDebounceRef.current) clearTimeout(planDebounceRef.current);
       if (wps.length < 2) {
         setPlannedRoute(null);
@@ -51,7 +51,7 @@ export default function NewRoutePage() {
       planDebounceRef.current = setTimeout(async () => {
         setPlanError(null);
         try {
-          const result = await planRoute({ waypoints: wps, surface: suf });
+          const result = await planRoute({ data: { waypoints: wps, surface: suf } });
           setPlannedRoute(result);
         } catch (err: unknown) {
           const msg =
@@ -66,7 +66,7 @@ export default function NewRoutePage() {
   );
 
   const handleWaypointsChange = useCallback(
-    (wps: Waypoint[]) => {
+    (wps: WaypointDto[]) => {
       setWaypoints(wps);
       triggerPlan(wps, surface);
     },
@@ -74,7 +74,7 @@ export default function NewRoutePage() {
   );
 
   const handleSurfaceChange = useCallback(
-    (s: RouteSurface) => {
+    (s: PlanRouteDtoSurface) => {
       setSurface(s);
       triggerPlan(waypoints, s);
     },
@@ -91,10 +91,12 @@ export default function NewRoutePage() {
   async function handleSave() {
     if (!plannedRoute || !name.trim() || waypoints.length < 2) return;
     await createRoute({
-      name: name.trim(),
-      description: description.trim() || undefined,
-      surface,
-      waypoints,
+      data: {
+        name: name.trim(),
+        description: description.trim() || undefined,
+        surface,
+        waypoints,
+      },
     });
     await queryClient.invalidateQueries({ queryKey: getRoutesControllerFindAllQueryKey() });
     router.push('/routes');

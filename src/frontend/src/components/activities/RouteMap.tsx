@@ -388,6 +388,18 @@ export default function RouteMap({ trackPoints, boundingBox, onHoverDistKm, hove
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeStyle]);
 
+  // ── Update route when trackPoints change (e.g. after linking a new route) ──
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !styleReadyRef.current || trackPoints.length === 0) return;
+    attachRouteLayers(map, trackPoints, onHoverDistKmRef);
+    map.fitBounds(
+      [[boundingBox.minLng, boundingBox.minLat], [boundingBox.maxLng, boundingBox.maxLat]],
+      { padding: 50, maxZoom: 16, duration: 800 },
+    );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trackPoints]);
+
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;

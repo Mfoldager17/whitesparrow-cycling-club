@@ -2,7 +2,9 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import maplibregl, { StyleSpecification } from 'maplibre-gl';
-import type { PlannedRoute, RouteSurface, Waypoint } from '@/api/generated/routes/routes';
+import type { PlannedRouteDto } from '@/api/generated/models/plannedRouteDto';
+import type { PlanRouteDtoSurface } from '@/api/generated/models/planRouteDtoSurface';
+import type { WaypointDto } from '@/api/generated/models/waypointDto';
 import { routesControllerSnap } from '@/api/generated/routes/routes';
 
 // ─── Nominatim geocoding ───────────────────────────────────────────────────────

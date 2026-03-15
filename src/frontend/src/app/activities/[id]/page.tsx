@@ -18,15 +18,15 @@ import RidewithgpsRouteImport from '@/components/ridewithgps/RidewithgpsRouteImp
 import { RouteCard } from '@/components/routes/RouteCard';
 import {
   useRoutesControllerFindAll,
-  useActivitiesControllerLinkRoute,
-  type SavedRouteSummary,
 } from '@/api/generated/routes/routes';
 
 const RouteMap = dynamic(() => import('@/components/activities/RouteMap'), { ssr: false });
 import {
   useActivitiesControllerFindOne,
   useActivitiesControllerDelete,
+  useActivitiesControllerUpdate,
 } from '@/api/generated/activities/activities';
+import type { SavedRouteSummaryDto } from '@/api/generated/models/savedRouteSummaryDto';
 import {
   useCommentsControllerGetForActivity,
   useCommentsControllerCreate,
@@ -75,17 +75,17 @@ const { data: activityData, isLoading, refetch: refetchActivity } = useActivitie
   const { mutateAsync: deleteComment } = useCommentsControllerRemove();
   const { mutateAsync: deleteActivity, isPending: deleting } = useActivitiesControllerDelete();
   const { data: savedRoutesData } = useRoutesControllerFindAll();
-  const { mutateAsync: linkSavedRoute } = useActivitiesControllerLinkRoute();
+  const { mutateAsync: linkSavedRoute } = useActivitiesControllerUpdate();
 
   const savedRoutesList = (
     Array.isArray(savedRoutesData) ? savedRoutesData : ((savedRoutesData as any)?.data ?? [])
-  ) as SavedRouteSummary[];
+  ) as SavedRouteSummaryDto[];
 
   async function handleLinkSavedRoute() {
     if (!pickedRouteId) return;
     setLinkingRoute(true);
     try {
-      await linkSavedRoute({ activityId: id, savedRouteId: pickedRouteId });
+      await linkSavedRoute({ id, data: { savedRouteId: pickedRouteId } });
       setRoutePanel(null);
       setPickedRouteId(null);
       setDropdownOpen(false);
@@ -96,7 +96,7 @@ const { data: activityData, isLoading, refetch: refetchActivity } = useActivitie
   }
 
   async function handleUnlinkSavedRoute() {
-    await linkSavedRoute({ activityId: id, savedRouteId: null });
+    await linkSavedRoute({ id, data: { savedRouteId: null } });
     await refetchActivity();
   }
 
