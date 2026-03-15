@@ -62,9 +62,10 @@ export class RoutesService {
   // ─── ORS profile mapping ──────────────────────────────────────────────────
 
   private orsProfile(surface: RouteSurface): string {
-    if (surface === 'paved') return 'cycling-road';
     if (surface === 'unpaved') return 'cycling-mountain';
-    return 'cycling-regular';
+    // 'paved' and 'auto' both use cycling-road: routes along regular roads
+    // where cycling is permitted, rather than seeking dedicated cycling paths.
+    return 'cycling-road';
   }
 
   // ─── Call OpenRouteService to get a cycling route ─────────────────────────

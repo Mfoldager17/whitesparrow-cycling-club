@@ -5,6 +5,29 @@ import maplibregl, { StyleSpecification } from 'maplibre-gl';
 import type { PlannedRoute, RouteSurface, Waypoint } from '@/api/generated/routes/routes';
 import { routesControllerSnap } from '@/api/generated/routes/routes';
 
+// ─── Nominatim geocoding ───────────────────────────────────────────────────────
+
+interface NominatimResult {
+  place_id: number;
+  display_name: string;
+  lat: string;
+  lon: string;
+  type: string;
+}
+
+async function nominatimSearch(q: string): Promise<NominatimResult[]> {
+  const url = new URL('https://nominatim.openstreetmap.org/search');
+  url.searchParams.set('q', q);
+  url.searchParams.set('format', 'json');
+  url.searchParams.set('limit', '6');
+  url.searchParams.set('countrycodes', 'dk,de,se,no');
+  const res = await fetch(url.toString(), {
+    headers: { 'Accept-Language': 'da', 'User-Agent': 'WhiteSparrow-CyclingClub/1.0' },
+  });
+  if (!res.ok) throw new Error('Geocoding failed');
+  return res.json();
+}
+
 // ─── Map style definitions (reused from RouteMap) ─────────────────────────────
 
 function rasterStyle(tiles: string[], attribution: string, maxzoom?: number): StyleSpecification {
@@ -262,6 +285,92 @@ export default function RoutePlannerMap({
   const activeStyleRef = useRef(activeStyle);
   useEffect(() => { activeStyleRef.current = activeStyle; }, [activeStyle]);
 
+  // ── Geocoding search state ──
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<NominatimResult[]>([]);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchRef = useRef<HTMLDivElement>(null);
+
+  // Close search dropdown on outside click
+  useEffect(() => {
+    function close(e: MouseEvent) {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setSearchOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, []);
+
+  function handleSearchInput(val: string) {
+    setSearchQuery(val);
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    if (!val.trim()) { setSearchResults([]); setSearchOpen(false); return; }
+    searchDebounceRef.current = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const results = await nominatimSearch(val);
+        setSearchResults(results);
+        setSearchOpen(results.length > 0);
+      } catch {
+        // ignore
+      } finally {
+        setSearching(false);
+      }
+    }, 400);
+  }
+
+  function handlePickResult(r: NominatimResult) {
+    setSearchOpen(false);
+    // Format display string consistently with the dropdown list
+    const segments = r.display_name.split(',').map(s => s.trim());
+    let display = segments[0];
+    if (segments[0].length <= 4 && segments[1]) {
+      display = `${segments[1]} ${segments[0]}`;
+    }
+    setSearchQuery(display);
+    const lat = parseFloat(r.lat);
+    const lng = parseFloat(r.lon);
+    mapRef.current?.flyTo({ center: [lng, lat], duration: 800 });
+  }
+
+  // ── Geolocation ──
+  const [locating, setLocating] = useState(false);
+  function handleLocate() {
+    if (!navigator.geolocation) return;
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setLocating(false);
+        mapRef.current?.flyTo({
+          center: [pos.coords.longitude, pos.coords.latitude],
+          zoom: 16,
+          duration: 800,
+        });
+      },
+      () => setLocating(false),
+      { enableHighAccuracy: true, timeout: 8000 },
+    );
+  }
+
+  // ── Return to start (close the loop) ──
+  function handleReturnToStart() {
+    const wps = waypointsRef.current;
+    if (wps.length < 2) return;
+    const start = wps[0];
+    const last = wps[wps.length - 1];
+    // Already at start — do nothing
+    if (last.lat === start.lat && last.lng === start.lng) return;
+    const next = [...wps, { lat: start.lat, lng: start.lng }];
+    waypointsRef.current = next;
+    pushHistoryRef.current(next);
+    onWaypointsChange(next);
+    const map = mapRef.current;
+    if (map && styleReadyRef.current) rebuildMarkers(map, next);
+  }
+
   // ── Draw/update the planned route on the map ──
   const drawRoute = useCallback((map: maplibregl.Map, route: PlannedRoute | null) => {
     routeDrawnRef.current = !!route;
@@ -477,6 +586,67 @@ export default function RoutePlannerMap({
 
   return (
     <div className="flex flex-col gap-3">
+      {/* Search bar */}
+      <div className="relative" ref={searchRef}>
+        <div className="relative flex items-center">
+          <svg className="absolute left-3 w-4 h-4 text-gray-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+          </svg>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => handleSearchInput(e.target.value)}
+            onFocus={() => searchResults.length > 0 && setSearchOpen(true)}
+            placeholder="Søg efter sted, by eller adresse…"
+            className="w-full pl-9 pr-4 py-2 text-sm rounded-xl border border-gray-200 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+          />
+          {searching && (
+            <svg className="absolute right-3 w-4 h-4 text-brand-500 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+            </svg>
+          )}
+        </div>
+
+        {searchOpen && searchResults.length > 0 && (
+          <ul className="absolute left-0 right-0 top-full mt-1 z-30 bg-white rounded-xl border border-gray-200 shadow-lg overflow-hidden">
+            {searchResults.map((r) => (
+              <li key={r.place_id}>
+                <button
+                  onClick={() => handlePickResult(r)}
+                  className="flex items-start gap-2.5 w-full px-3.5 py-2.5 text-left hover:bg-gray-50 transition-colors"
+                >
+                  <svg className="w-4 h-4 shrink-0 mt-0.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.828 0l-4.243-4.243a8 8 0 1111.314 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">
+                      {(() => {
+                        const segments = r.display_name.split(',').map(s => s.trim());
+                        if (segments[0].length <= 4 && segments[1]) {
+                          return `${segments[1]} ${segments[0]}`;
+                        }
+                        return segments[0];
+                      })()}
+                    </p>
+                    <p className="text-xs text-gray-400 truncate">
+                      {(() => {
+                        const segments = r.display_name.split(',').map(s => s.trim());
+                        if (segments[0].length <= 4 && segments[1]) {
+                          return segments.slice(2).join(', ');
+                        }
+                        return segments.slice(1).join(', ');
+                      })()}
+                    </p>
+                  </div>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
       {/* Controls bar */}
       <div className="flex flex-wrap items-center gap-3">
         {/* Surface buttons */}
@@ -522,6 +692,20 @@ export default function RoutePlannerMap({
           </button>
         </div>
 
+        {/* Return to start */}
+        {waypointCount >= 2 && (
+          <button
+            onClick={handleReturnToStart}
+            title="Tilføj startpunktet som slutpunkt (lukkede rute)"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 9l-6 3 6 3M15 15l6-3-6-3M9 12h6" />
+            </svg>
+            Retur til start
+          </button>
+        )}
+
         {/* Map style buttons */}
         <div className="flex rounded-lg border border-gray-200 overflow-hidden ml-auto">
           {(Object.entries(MAP_STYLES) as [MapStyle, (typeof MAP_STYLES)[MapStyle]][]).map(
@@ -546,6 +730,26 @@ export default function RoutePlannerMap({
       {/* Map */}
       <div className="relative rounded-xl overflow-hidden border border-gray-200 shadow-sm" style={{ height: 480 }}>
         <div ref={containerRef} className="absolute inset-0" />
+
+        {/* Geolocation button */}
+        <button
+          onClick={handleLocate}
+          disabled={locating}
+          title="Find min placering"
+          className="absolute top-3 right-3 z-10 bg-white rounded-lg shadow-md border border-gray-200 p-2 hover:bg-gray-50 transition-colors disabled:opacity-60"
+        >
+          {locating ? (
+            <svg className="w-5 h-5 text-brand-600 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+            </svg>
+          ) : (
+            <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 2a7 7 0 0 1 7 7c0 4.5-7 13-7 13S5 13.5 5 9a7 7 0 0 1 7-7z" />
+              <circle cx="12" cy="9" r="2.5" fill="currentColor" stroke="none" />
+            </svg>
+          )}
+        </button>
 
         {/* Planning spinner overlay */}
         {isPlanning && (
