@@ -16,16 +16,14 @@ import RouteUpload from '@/components/activities/RouteUpload';
 import StravaRouteImport from '@/components/strava/StravaRouteImport';
 import RidewithgpsRouteImport from '@/components/ridewithgps/RidewithgpsRouteImport';
 import { RouteCard } from '@/components/routes/RouteCard';
-import {
-  useRoutesControllerFindAll,
-  useActivitiesControllerLinkRoute,
-  type SavedRouteSummary,
-} from '@/api/generated/routes/routes';
+import type { SavedRouteSummaryDto } from '@/api/generated/models';
+import { useRoutesControllerFindAll } from '@/api/generated/routes/routes';
 
 const RouteMap = dynamic(() => import('@/components/activities/RouteMap'), { ssr: false });
 import {
   useActivitiesControllerFindOne,
   useActivitiesControllerDelete,
+  useActivitiesControllerUpdate,
 } from '@/api/generated/activities/activities';
 import {
   useCommentsControllerGetForActivity,
@@ -75,17 +73,17 @@ const { data: activityData, isLoading, refetch: refetchActivity } = useActivitie
   const { mutateAsync: deleteComment } = useCommentsControllerRemove();
   const { mutateAsync: deleteActivity, isPending: deleting } = useActivitiesControllerDelete();
   const { data: savedRoutesData } = useRoutesControllerFindAll();
-  const { mutateAsync: linkSavedRoute } = useActivitiesControllerLinkRoute();
+  const { mutateAsync: updateActivity } = useActivitiesControllerUpdate();
 
   const savedRoutesList = (
     Array.isArray(savedRoutesData) ? savedRoutesData : ((savedRoutesData as any)?.data ?? [])
-  ) as SavedRouteSummary[];
+  ) as SavedRouteSummaryDto[];
 
   async function handleLinkSavedRoute() {
     if (!pickedRouteId) return;
     setLinkingRoute(true);
     try {
-      await linkSavedRoute({ activityId: id, savedRouteId: pickedRouteId });
+      await updateActivity({ id, data: { savedRouteId: pickedRouteId as any } });
       setRoutePanel(null);
       setPickedRouteId(null);
       setDropdownOpen(false);
@@ -96,7 +94,7 @@ const { data: activityData, isLoading, refetch: refetchActivity } = useActivitie
   }
 
   async function handleUnlinkSavedRoute() {
-    await linkSavedRoute({ activityId: id, savedRouteId: null });
+    await updateActivity({ id, data: { savedRouteId: null as any } });
     await refetchActivity();
   }
 

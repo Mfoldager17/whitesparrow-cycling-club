@@ -9,11 +9,11 @@ import {
   useRoutesControllerFindAll,
   useRoutesControllerDelete,
   getRoutesControllerFindAllQueryKey,
-  type SavedRouteSummary,
 } from '@/api/generated/routes/routes';
+import type { SavedRouteSummaryDto } from '@/api/generated/models';
 import { useAuth } from '@/contexts/AuthContext';
 
-function DeletableRouteCard({ route }: { route: SavedRouteSummary }) {
+function DeletableRouteCard({ route }: { route: SavedRouteSummaryDto }) {
   const queryClient = useQueryClient();
   const { mutateAsync: deleteRoute, isPending: deleting } = useRoutesControllerDelete();
   const { user } = useAuth();
@@ -23,7 +23,7 @@ function DeletableRouteCard({ route }: { route: SavedRouteSummary }) {
   async function handleDelete(e: React.MouseEvent) {
     e.preventDefault();
     if (!confirm(`Slet ruten "${route.name}"? Aktiviteter der bruger den vil miste rutedata.`)) return;
-    await deleteRoute(route.id);
+    await deleteRoute({ id: route.id });
     await queryClient.invalidateQueries({ queryKey: getRoutesControllerFindAllQueryKey() });
   }
 
@@ -43,7 +43,7 @@ export default function RoutesClient() {
 
   if (isLoading) return <PageSpinner />;
 
-  const list = Array.isArray(routes) ? routes : ((routes as any)?.data ?? []) as SavedRouteSummary[];
+  const list = Array.isArray(routes) ? routes : ((routes as any)?.data ?? []) as SavedRouteSummaryDto[];
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-10 sm:px-6">

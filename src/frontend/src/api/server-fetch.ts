@@ -12,56 +12,35 @@ import { cookies } from 'next/headers';
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
-type RequestConfig = {
-  url: string;
-  method: string;
-  headers?: Record<string, string>;
-  /** Query-string params — Orval passes these as an object */
-  params?: Record<string, string | number | boolean | undefined | null>;
-  /** Request body — Orval passes this as the typed DTO */
-  data?: unknown;
-  signal?: AbortSignal;
-};
-
 /**
  * Orval mutator for the `whitesparrow_server` output.
  *
+ * Called as `serverFetch<T>(url, options)` by orval's fetch client.
  * Reads the `accessToken` cookie written by `AuthContext` on login, attaches it
  * as a Bearer token and forwards the request to the NestJS backend.
  *
  * The backend wraps all successful responses as `{ data: T }`, so the raw
  * `data` field is unwrapped before returning.
  */
-export const serverFetch = async <T>(config: RequestConfig): Promise<T> => {
+export const serverFetch = async <T>(url: string, options?: RequestInit): Promise<T> => {
   const cookieStore = await cookies();
   const token = cookieStore.get('accessToken')?.value;
 
-  const url = new URL(`${BASE_URL}${config.url}`);
-
-  if (config.params) {
-    for (const [key, value] of Object.entries(config.params)) {
-      if (value !== undefined && value !== null) {
-        url.searchParams.set(key, String(value));
-      }
-    }
+  const headers = new Headers(options?.headers);
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
   }
 
-  const response = await fetch(url.toString(), {
-    method: config.method.toUpperCase(),
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...config.headers,
-    },
-    ...(config.data !== undefined ? { body: JSON.stringify(config.data) } : {}),
-    signal: config.signal,
+  const response = await fetch(`${BASE_URL}${url}`, {
+    ...options,
+    headers,
     // Never cache authenticated data; each server render should be fresh.
     cache: 'no-store',
   });
 
   if (!response.ok) {
     throw new Error(
-      `API ${config.method.toUpperCase()} ${config.url} → ${response.status} ${response.statusText}`,
+      `API ${options?.method ?? 'GET'} ${url} → ${response.status} ${response.statusText}`,
     );
   }
 

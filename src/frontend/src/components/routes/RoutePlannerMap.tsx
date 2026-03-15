@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import maplibregl, { StyleSpecification } from 'maplibre-gl';
-import type { PlannedRoute, RouteSurface, Waypoint } from '@/api/generated/routes/routes';
+import type { PlannedRouteDto, PlanRouteDtoSurface, WaypointDto } from '@/api/generated/models';
 import { routesControllerSnap } from '@/api/generated/routes/routes';
 
 // ─── Nominatim geocoding ───────────────────────────────────────────────────────
@@ -99,7 +99,7 @@ function slopeColor(pct: number): string {
 
 // ─── Connector line (straight dashed lines between waypoints) ────────────────
 
-function waypointsToLineData(waypoints: Waypoint[]): GeoJSON.Feature<GeoJSON.LineString> {
+function waypointsToLineData(waypoints: WaypointDto[]): GeoJSON.Feature<GeoJSON.LineString> {
   return {
     type: 'Feature',
     properties: {},
@@ -131,7 +131,7 @@ function setupConnectorLayer(map: maplibregl.Map) {
   }
 }
 
-function updateConnectorLine(map: maplibregl.Map, waypoints: Waypoint[], routeDrawn: boolean) {
+function updateConnectorLine(map: maplibregl.Map, waypoints: WaypointDto[], routeDrawn: boolean) {
   const src = map.getSource('wp-connector') as maplibregl.GeoJSONSource | undefined;
   if (!src) return;
   // Show dashed connector only while route isn't drawn yet
@@ -143,7 +143,7 @@ function updateConnectorLine(map: maplibregl.Map, waypoints: Waypoint[], routeDr
 
 type RouteFeature = GeoJSON.Feature<GeoJSON.LineString, { color: string }>;
 
-function buildRouteGeoJSON(pts: PlannedRoute['trackPoints']): GeoJSON.FeatureCollection<GeoJSON.LineString, { color: string }> {
+function buildRouteGeoJSON(pts: PlannedRouteDto['trackPoints']): GeoJSON.FeatureCollection<GeoJSON.LineString, { color: string }> {
   const features: RouteFeature[] = [];
   for (let i = 0; i < pts.length - 1; i++) {
     const a = pts[i];
@@ -180,7 +180,7 @@ function createWaypointEl(index: number, total: number): HTMLDivElement {
 
 // ─── Surface type config ───────────────────────────────────────────────────────
 
-const SURFACE_OPTIONS: { value: RouteSurface; label: string; icon: string; title: string }[] = [
+const SURFACE_OPTIONS: { value: PlanRouteDtoSurface; label: string; icon: string; title: string }[] = [
   { value: 'auto', icon: '🚲', label: 'Auto', title: 'Vælg den bedste vej automatisk' },
   { value: 'paved', icon: '🛣️', label: 'Asfalt', title: 'Foretrækker asfalt og befæstede veje' },
   { value: 'unpaved', icon: '🪨', label: 'Grus', title: 'Foretrækker grus og ubefæstede veje' },
@@ -190,13 +190,13 @@ const SURFACE_OPTIONS: { value: RouteSurface; label: string; icon: string; title
 
 interface RoutePlannerMapProps {
   /** Initially populated waypoints (e.g. when editing an existing route) */
-  initialWaypoints?: Waypoint[];
-  surface: RouteSurface;
-  onSurfaceChange: (s: RouteSurface) => void;
+  initialWaypoints?: WaypointDto[];
+  surface: PlanRouteDtoSurface;
+  onSurfaceChange: (s: PlanRouteDtoSurface) => void;
   /** Called when waypoints change — parent should re-plan the route */
-  onWaypointsChange: (waypoints: Waypoint[]) => void;
+  onWaypointsChange: (waypoints: WaypointDto[]) => void;
   /** The currently computed route; null while not yet computed */
-  plannedRoute: PlannedRoute | null;
+  plannedRoute: PlannedRouteDto | null;
   /** Whether a route computation is in progress */
   isPlanning: boolean;
 }
@@ -220,24 +220,24 @@ export default function RoutePlannerMap({
   const queuedStyleRef = useRef<MapStyle | null>(null);
 
   // Keep a stable ref to waypoints for use inside map event handlers
-  const waypointsRef = useRef<Waypoint[]>(initialWaypoints);
+  const waypointsRef = useRef<WaypointDto[]>(initialWaypoints);
   const markersRef = useRef<maplibregl.Marker[]>([]);
   // Track current surface inside map event handlers without stale closures
-  const surfaceRef = useRef<RouteSurface>(surface);
+  const surfaceRef = useRef<PlanRouteDtoSurface>(surface);
   useEffect(() => { surfaceRef.current = surface; }, [surface]);
   // Track whether a route is currently drawn (to control connector visibility)
   const routeDrawnRef = useRef(false);
 
   // ── Undo / redo history ──
-  const historyRef = useRef<Waypoint[][]>([[...initialWaypoints]]);
+  const historyRef = useRef<WaypointDto[][]>([[...initialWaypoints]]);
   const historyIndexRef = useRef(0);
   const [historyState, setHistoryState] = useState({ pos: 0, total: 1 });
   const canUndo = historyState.pos > 0;
   const canRedo = historyState.pos < historyState.total - 1;
 
   // Always up-to-date function for pushing a new snapshot — safe to call from map event handlers
-  const pushHistoryRef = useRef<(wps: Waypoint[]) => void>(() => {});
-  pushHistoryRef.current = (wps: Waypoint[]) => {
+  const pushHistoryRef = useRef<(wps: WaypointDto[]) => void>(() => {});
+  pushHistoryRef.current = (wps: WaypointDto[]) => {
     const next = historyRef.current.slice(0, historyIndexRef.current + 1);
     next.push([...wps]);
     historyRef.current = next;
@@ -372,7 +372,7 @@ export default function RoutePlannerMap({
   }
 
   // ── Draw/update the planned route on the map ──
-  const drawRoute = useCallback((map: maplibregl.Map, route: PlannedRoute | null) => {
+  const drawRoute = useCallback((map: maplibregl.Map, route: PlannedRouteDto | null) => {
     routeDrawnRef.current = !!route;
     // Hide/show connector based on whether route is drawn
     if (map.getSource('wp-connector')) {
@@ -419,7 +419,7 @@ export default function RoutePlannerMap({
   }, []);
 
   // ── Rebuild all waypoint markers ──
-  const rebuildMarkers = useCallback((map: maplibregl.Map, waypoints: Waypoint[]) => {
+  const rebuildMarkers = useCallback((map: maplibregl.Map, waypoints: WaypointDto[]) => {
     markersRef.current.forEach((m) => m.remove());
     markersRef.current = [];
 
@@ -524,7 +524,7 @@ export default function RoutePlannerMap({
       // Click to add waypoints — snap to nearest road first
       map.on('click', (e) => {
         if (styleTransitionRef.current) return;
-        const clicked: Waypoint = { lat: e.lngLat.lat, lng: e.lngLat.lng };
+        const clicked: WaypointDto = { lat: e.lngLat.lat, lng: e.lngLat.lng };
         routesControllerSnap({ ...clicked, surface: surfaceRef.current })
           .then((snapped) => {
             const next = [...waypointsRef.current, snapped];

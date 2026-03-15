@@ -73,7 +73,7 @@ export class CreateActivityDto {
   @IsOptional()
   routeUrl?: string;
 
-  @ApiProperty({ example: 'uuid-of-saved-route', required: false, nullable: true })
+  @ApiProperty({ type: 'string', example: 'uuid-of-saved-route', required: false, nullable: true })
   @IsUUID()
   @IsOptional()
   savedRouteId?: string | null;

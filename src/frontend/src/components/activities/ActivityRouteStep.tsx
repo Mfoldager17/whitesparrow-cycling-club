@@ -5,11 +5,9 @@ import RouteUpload from '@/components/activities/RouteUpload';
 import StravaRouteImport from '@/components/strava/StravaRouteImport';
 import RidewithgpsRouteImport from '@/components/ridewithgps/RidewithgpsRouteImport';
 import { RouteCard } from '@/components/routes/RouteCard';
-import {
-  useRoutesControllerFindAll,
-  useActivitiesControllerLinkRoute,
-  type SavedRouteSummary,
-} from '@/api/generated/routes/routes';
+import { useRoutesControllerFindAll } from '@/api/generated/routes/routes';
+import { useActivitiesControllerUpdate } from '@/api/generated/activities/activities';
+import type { SavedRouteSummaryDto } from '@/api/generated/models';
 
 interface ActivityRouteStepProps {
   activityId: string;
@@ -25,11 +23,11 @@ export function ActivityRouteStep({ activityId, onDone }: ActivityRouteStepProps
   const [linking, setLinking] = useState(false);
 
   const { data: routesData } = useRoutesControllerFindAll();
-  const { mutateAsync: linkRoute } = useActivitiesControllerLinkRoute();
+  const { mutateAsync: updateActivity } = useActivitiesControllerUpdate();
 
   const routes = (
     Array.isArray(routesData) ? routesData : ((routesData as any)?.data ?? [])
-  ) as SavedRouteSummary[];
+  ) as SavedRouteSummaryDto[];
 
   function handleRouteAdded() {
     setHasRoute(true);
@@ -39,7 +37,7 @@ export function ActivityRouteStep({ activityId, onDone }: ActivityRouteStepProps
     if (!selectedRouteId) return;
     setLinking(true);
     try {
-      await linkRoute({ activityId, savedRouteId: selectedRouteId });
+      await updateActivity({ id: activityId, data: { savedRouteId: selectedRouteId as any } });
       setHasRoute(true);
     } finally {
       setLinking(false);

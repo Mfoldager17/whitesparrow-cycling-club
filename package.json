@@ -9,15 +9,16 @@
   "scripts": {
     "dev": "concurrently \"npm run dev --workspace=src/backend\" \"npm run dev --workspace=src/frontend\"",
     "build": "npm run build --workspace=src/backend && npm run build --workspace=src/frontend",
-    "generate:api": "npm run generate --workspace=src/frontend",
-    "postinstall": "rm -rf node_modules/@stoplight/spectral-core/node_modules/ajv"
+    "generate:api": "npm run generate --workspace=src/frontend"
   },
   "devDependencies": {
+    "@stoplight/spectral-formats": "^1.8.2",
+    "@stoplight/spectral-functions": "^1.10.1",
+    "@stoplight/spectral-rulesets": "^1.22.0",
+    "ajv": "8.17.1",
     "concurrently": "^9.1.0"
   },
-  "overrides": {
-    "@stoplight/spectral-core": {
-      "ajv": "^8.17.1"
-    }
+  "dependencies": {
+    "@stoplight/spectral-core": "^1.21.0"
   }
 }

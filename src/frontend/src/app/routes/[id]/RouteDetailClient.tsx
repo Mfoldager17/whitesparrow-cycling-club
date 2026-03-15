@@ -65,7 +65,7 @@ export default function RouteDetailClient() {
 
   async function handleDelete() {
     if (!confirm(`Slet ruten "${route.name}"?`)) return;
-    await deleteRoute(id);
+    await deleteRoute({ id });
     await queryClient.invalidateQueries({ queryKey: getRoutesControllerFindAllQueryKey() });
     router.push('/routes');
   }
