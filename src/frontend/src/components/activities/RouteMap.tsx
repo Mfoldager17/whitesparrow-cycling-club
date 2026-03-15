@@ -20,18 +20,23 @@ interface BoundingBox {
 interface RouteMapProps {
   trackPoints: TrackPoint[];
   boundingBox: BoundingBox;
+  onHoverDistKm?: (km: number | null) => void;
+  hoveredDistKm?: number | null;
+  onMapReady?: (moveDot: (km: number | null) => void) => void;
 }
+
+type HoverCbRef = { current: ((km: number | null) => void) | undefined };
 
 type MapStyle = 'standard' | 'satellite' | 'cycling' | 'terrain';
 
 // ─── Map style definitions using free raster tile providers ──────────────────
 
-function rasterStyle(tiles: string[], attribution: string): StyleSpecification {
+function rasterStyle(tiles: string[], attribution: string, maxzoom?: number): StyleSpecification {
   return {
     version: 8,
     glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
     sources: {
-      base: { type: 'raster', tiles, tileSize: 256, attribution },
+      base: { type: 'raster', tiles, tileSize: 256, attribution, maxzoom },
     },
     layers: [{ id: 'base-tiles', type: 'raster', source: 'base' }],
   };
@@ -44,6 +49,7 @@ const STYLES: Record<MapStyle, { label: string; icon: string; style: StyleSpecif
     style: rasterStyle(
       ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
       '© <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>',
+      19,
     ),
   },
   satellite: {
@@ -54,6 +60,7 @@ const STYLES: Record<MapStyle, { label: string; icon: string; style: StyleSpecif
         'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
       ],
       'Tiles © Esri — Source: Esri, USDA, USGS, AEX, GeoEye, Getmapping, IGN',
+      19,
     ),
   },
   cycling: {
@@ -66,6 +73,7 @@ const STYLES: Record<MapStyle, { label: string; icon: string; style: StyleSpecif
         'https://c.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png',
       ],
       '© <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>, <a href="https://www.cyclosm.org" target="_blank">CyclOSM</a>',
+      19,
     ),
   },
   terrain: {
@@ -74,6 +82,7 @@ const STYLES: Record<MapStyle, { label: string; icon: string; style: StyleSpecif
     style: rasterStyle(
       ['https://tile.opentopomap.org/{z}/{x}/{y}.png'],
       '© <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>, © <a href="https://opentopomap.org" target="_blank">OpenTopoMap</a>',
+      17,
     ),
   },
 };
@@ -129,7 +138,7 @@ function buildRouteGeoJSON(pts: TrackPoint[]): RouteGeoJSON {
         slope: Math.round(slope * 10) / 10,
         elevStart: Math.round(a.ele),
         elevEnd: Math.round(b.ele),
-        distKm: Math.round(a.distanceKm * 10) / 10,
+        distKm: a.distanceKm,
       },
     });
   }
@@ -138,61 +147,75 @@ function buildRouteGeoJSON(pts: TrackPoint[]): RouteGeoJSON {
 
 // ─── Add/refresh route layers on the map ─────────────────────────────────────
 
-let activePopup: maplibregl.Popup | null = null;
+function nearestPoint(pts: TrackPoint[], km: number) {
+  return pts.reduce((best, p) =>
+    Math.abs(p.distanceKm - km) < Math.abs(best.distanceKm - km) ? p : best,
+  );
+}
 
-function attachRouteLayers(map: maplibregl.Map, pts: TrackPoint[]) {
-  const data = buildRouteGeoJSON(pts);
-
-  if (map.getSource('route')) {
-    (map.getSource('route') as maplibregl.GeoJSONSource).setData(data);
-    return;
+function hoverDetails(pts: TrackPoint[], km: number) {
+  let bestIndex = 0;
+  for (let i = 1; i < pts.length; i++) {
+    if (Math.abs(pts[i].distanceKm - km) < Math.abs(pts[bestIndex].distanceKm - km)) {
+      bestIndex = i;
+    }
   }
 
-  map.addSource('route', { type: 'geojson', data });
+  const startIndex = Math.min(bestIndex, pts.length - 2);
+  const a = pts[startIndex];
+  const b = pts[startIndex + 1] ?? a;
+  const distM = Math.max((b.distanceKm - a.distanceKm) * 1000, 0);
+  const slope = distM > 0.5 ? ((b.ele - a.ele) / distM) * 100 : 0;
 
-  // Drop shadow for legibility on all basemaps
-  map.addLayer({
-    id: 'route-shadow',
-    type: 'line',
-    source: 'route',
-    layout: { 'line-cap': 'round', 'line-join': 'round' },
-    paint: { 'line-color': '#000', 'line-width': 8, 'line-opacity': 0.18, 'line-blur': 4 },
-  });
+  return {
+    point: pts[bestIndex],
+    distKm: pts[bestIndex].distanceKm,
+    elevStart: Math.round(a.ele),
+    slope: Math.round(slope * 10) / 10,
+    color: slopeColor(slope),
+  };
+}
 
-  // Main slope-coloured route
-  map.addLayer({
-    id: 'route-line',
-    type: 'line',
-    source: 'route',
-    layout: { 'line-cap': 'round', 'line-join': 'round' },
-    paint: {
-      'line-color': ['get', 'color'],
-      'line-width': ['interpolate', ['linear'], ['zoom'], 8, 2.5, 14, 5, 18, 8],
-    },
-  });
+function attachRouteLayers(map: maplibregl.Map, pts: TrackPoint[], onHoverRef: HoverCbRef) {
+  const data = buildRouteGeoJSON(pts);
 
-  // Hover highlight
-  map.addLayer({
-    id: 'route-hover',
-    type: 'line',
-    source: 'route',
-    layout: { 'line-cap': 'round', 'line-join': 'round' },
-    paint: {
-      'line-color': '#fff',
-      'line-width': ['interpolate', ['linear'], ['zoom'], 8, 4, 14, 8, 18, 12],
-      'line-opacity': 0,
-    },
-    filter: ['==', '$type', 'LineString'],
-  });
+  if (!map.getSource('route')) {
+    map.addSource('route', { type: 'geojson', data });
+  } else {
+    (map.getSource('route') as maplibregl.GeoJSONSource).setData(data);
+  }
 
-  // ── Hover interactions ──
-  const popup = new maplibregl.Popup({
-    closeButton: false,
-    closeOnClick: false,
-    maxWidth: '220px',
-    className: 'route-popup',
-  });
-  activePopup = popup;
+  if (!map.getLayer('route-shadow')) {
+    map.addLayer({
+      id: 'route-shadow',
+      type: 'line',
+      source: 'route',
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: { 'line-color': '#000', 'line-width': 8, 'line-opacity': 0.18, 'line-blur': 4 },
+    });
+    map.addLayer({
+      id: 'route-line',
+      type: 'line',
+      source: 'route',
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: {
+        'line-color': ['get', 'color'],
+        'line-width': ['interpolate', ['linear'], ['zoom'], 8, 2.5, 14, 5, 18, 8],
+      },
+    });
+    map.addLayer({
+      id: 'route-hover',
+      type: 'line',
+      source: 'route',
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: {
+        'line-color': '#fff',
+        'line-width': ['interpolate', ['linear'], ['zoom'], 8, 4, 14, 8, 18, 12],
+        'line-opacity': 0,
+      },
+      filter: ['==', '$type', 'LineString'],
+    });
+  }
 
   map.on('mouseenter', 'route-line', () => {
     map.getCanvas().style.cursor = 'crosshair';
@@ -200,46 +223,90 @@ function attachRouteLayers(map: maplibregl.Map, pts: TrackPoint[]) {
 
   map.on('mouseleave', 'route-line', () => {
     map.getCanvas().style.cursor = '';
-    popup.remove();
     map.setPaintProperty('route-hover', 'line-opacity', 0);
+    onHoverRef.current?.(null);
   });
 
   map.on('mousemove', 'route-line', (e) => {
     if (!e.features?.length) return;
     const p = e.features[0].properties as RouteGeoJSON['features'][0]['properties'];
-    const slopeDir = p.slope > 0 ? '↑' : p.slope < 0 ? '↓' : '→';
-    const slopeAbs = Math.abs(p.slope);
-
     map.setPaintProperty('route-hover', 'line-opacity', 0.35);
-
-    popup
-      .setLngLat(e.lngLat)
-      .setHTML(
-        `<div style="font-family:system-ui,sans-serif;padding:4px 2px;line-height:1.5">
-          <div style="font-weight:700;font-size:13px;color:#1a1a1a">${p.distKm} km</div>
-          <div style="font-size:12px;color:#555">Højde: <strong>${p.elevStart} m</strong></div>
-          <div style="font-size:12px;color:#555">${slopeDir} Hældning: <strong style="color:${p.color}">${slopeAbs}%</strong></div>
-        </div>`,
-      )
-      .addTo(map);
+    onHoverRef.current?.(p.distKm);
   });
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-export default function RouteMap({ trackPoints, boundingBox }: RouteMapProps) {
+export default function RouteMap({ trackPoints, boundingBox, onHoverDistKm, hoveredDistKm, onMapReady }: RouteMapProps) {
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const initializedRef = useRef(false);
-  // Tracks whether the initial style is already set via the map constructor
   const styleReadyRef = useRef(false);
+  const styleTransitionRef = useRef(false);
+  const appliedStyleRef = useRef<MapStyle>('standard');
+  const queuedStyleRef = useRef<MapStyle | null>(null);
   const [activeStyle, setActiveStyle] = useState<MapStyle>('standard');
   const [legendOpen, setLegendOpen] = useState(false);
+  const [hoverPointPx, setHoverPointPx] = useState<{ x: number; y: number } | null>(null);
+  const [hoverInfo, setHoverInfo] = useState<{
+    x: number;
+    y: number;
+    distKm: number;
+    elevStart: number;
+    slope: number;
+    color: string;
+  } | null>(null);
+
+  const onHoverDistKmRef = useRef(onHoverDistKm);
+  useEffect(() => { onHoverDistKmRef.current = onHoverDistKm; }, [onHoverDistKm]);
+  const activeStyleRef = useRef(activeStyle);
+  useEffect(() => { activeStyleRef.current = activeStyle; }, [activeStyle]);
+  const hoveredDistKmRef = useRef<number | null>(hoveredDistKm ?? null);
+  useEffect(() => { hoveredDistKmRef.current = hoveredDistKm ?? null; }, [hoveredDistKm]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || hoveredDistKm == null) {
+      setHoverPointPx(null);
+      setHoverInfo(null);
+      return;
+    }
+
+    const details = hoverDetails(trackPoints, hoveredDistKm);
+    const projected = map.project([details.point.lng, details.point.lat]);
+    setHoverPointPx({ x: projected.x, y: projected.y });
+    setHoverInfo({
+      x: projected.x,
+      y: projected.y,
+      distKm: details.distKm,
+      elevStart: details.elevStart,
+      slope: details.slope,
+      color: details.color,
+    });
+  }, [hoveredDistKm]);
 
   const bounds: maplibregl.LngLatBoundsLike = [
     [boundingBox.minLng, boundingBox.minLat],
     [boundingBox.maxLng, boundingBox.maxLat],
   ];
+
+  function applyStyleChange(map: maplibregl.Map, styleKey: MapStyle) {
+    styleTransitionRef.current = true;
+    map.setStyle(STYLES[styleKey].style);
+    map.once('idle', () => {
+      attachRouteLayers(map, trackPoints, onHoverDistKmRef);
+      appliedStyleRef.current = styleKey;
+      styleReadyRef.current = true;
+      styleTransitionRef.current = false;
+
+      if (queuedStyleRef.current && queuedStyleRef.current !== styleKey) {
+        const nextStyle = queuedStyleRef.current;
+        queuedStyleRef.current = null;
+        applyStyleChange(map, nextStyle);
+      }
+    });
+  }
 
   // ── Initial map setup ──
   useEffect(() => {
@@ -255,9 +322,11 @@ export default function RouteMap({ trackPoints, boundingBox }: RouteMapProps) {
 
     map.addControl(new maplibregl.NavigationControl({ showCompass: true }), 'top-left');
     map.addControl(new maplibregl.ScaleControl({ unit: 'metric' }), 'bottom-left');
-    map.addControl(new maplibregl.FullscreenControl(), 'top-left');
+    map.addControl(
+      new maplibregl.FullscreenControl({ container: wrapperRef.current ?? undefined }),
+      'top-left',
+    );
 
-    // ── Start marker ──
     const startEl = document.createElement('div');
     startEl.style.cssText =
       'width:14px;height:14px;border-radius:50%;background:#16a34a;border:2.5px solid #fff;box-shadow:0 1px 6px rgba(0,0,0,.4)';
@@ -270,7 +339,6 @@ export default function RouteMap({ trackPoints, boundingBox }: RouteMapProps) {
       )
       .addTo(map);
 
-    // ── End marker ──
     const endEl = document.createElement('div');
     endEl.style.cssText =
       'width:14px;height:14px;border-radius:50%;background:#dc2626;border:2.5px solid #fff;box-shadow:0 1px 6px rgba(0,0,0,.4)';
@@ -284,8 +352,13 @@ export default function RouteMap({ trackPoints, boundingBox }: RouteMapProps) {
       .addTo(map);
 
     map.once('load', () => {
-      attachRouteLayers(map, trackPoints);
+      attachRouteLayers(map, trackPoints, onHoverDistKmRef);
+      appliedStyleRef.current = 'standard';
       styleReadyRef.current = true;
+
+      if (activeStyleRef.current !== appliedStyleRef.current) {
+        applyStyleChange(map, activeStyleRef.current);
+      }
     });
 
     mapRef.current = map;
@@ -298,33 +371,93 @@ export default function RouteMap({ trackPoints, boundingBox }: RouteMapProps) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Style switching – re-attach route after new style loads ──
+  // ── Style switching ──
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    if (!styleReadyRef.current) return;
+
+    if (activeStyle === appliedStyleRef.current) return;
+
+    if (styleTransitionRef.current) {
+      queuedStyleRef.current = activeStyle;
+      return;
+    }
+
+    applyStyleChange(map, activeStyle);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeStyle]);
+
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
 
-    // On first render the style is already set in the map constructor – skip to avoid
-    // "Style is not done loading" conflict. Only switch style on subsequent changes.
-    if (!styleReadyRef.current) return;
+    const syncHoverPoint = () => {
+      const km = hoveredDistKmRef.current;
+      if (km == null) {
+        setHoverPointPx(null);
+        setHoverInfo(null);
+        return;
+      }
 
-    const apply = () => {
-      map.setStyle(STYLES[activeStyle].style);
-      map.once('idle', () => attachRouteLayers(map, trackPoints));
+      const details = hoverDetails(trackPoints, km);
+      const projected = map.project([details.point.lng, details.point.lat]);
+      setHoverPointPx({ x: projected.x, y: projected.y });
+      setHoverInfo({
+        x: projected.x,
+        y: projected.y,
+        distKm: details.distKm,
+        elevStart: details.elevStart,
+        slope: details.slope,
+        color: details.color,
+      });
     };
 
-    // If the map is still busy (e.g. previous switch), wait for it
-    if (!map.loaded()) {
-      map.once('load', apply);
-      return () => { map.off('load', apply); };
-    }
+    map.on('move', syncHoverPoint);
+    map.on('zoom', syncHoverPoint);
+    map.on('resize', syncHoverPoint);
 
-    apply();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeStyle]);
+    return () => {
+      map.off('move', syncHoverPoint);
+      map.off('zoom', syncHoverPoint);
+      map.off('resize', syncHoverPoint);
+    };
+  }, [trackPoints]);
 
   return (
-    <div className="relative h-[28rem] w-full rounded-xl overflow-hidden shadow-md">
+    <div ref={wrapperRef} className="relative h-[28rem] w-full rounded-xl overflow-hidden shadow-md">
       <div ref={containerRef} className="absolute inset-0" style={{ width: '100%', height: '100%' }} />
+      {hoverPointPx && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute z-20"
+          style={{
+            left: hoverPointPx.x,
+            top: hoverPointPx.y,
+            transform: 'translate(-50%, -50%)',
+          }}
+        >
+          <div className="h-10 w-10 rounded-full bg-red-500/20" />
+          <div className="absolute left-1/2 top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-4 border-white bg-red-600 shadow-[0_3px_10px_rgba(0,0,0,0.35)]" />
+        </div>
+      )}
+      {hoverInfo && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute z-20 w-max max-w-[220px] rounded-lg border border-gray-200 bg-white/95 px-3 py-2 shadow-lg backdrop-blur-sm"
+          style={{
+            left: hoverInfo.x + 24,
+            top: hoverInfo.y,
+            transform: 'translateY(-50%)',
+          }}
+        >
+          <div className="text-[13px] font-bold text-gray-900">{(Math.round(hoverInfo.distKm * 10) / 10).toFixed(1)} km</div>
+          <div className="text-[12px] text-gray-600">Højde: <strong>{hoverInfo.elevStart} m</strong></div>
+          <div className="text-[12px] text-gray-600">
+            Hældning: <strong style={{ color: hoverInfo.color }}>{hoverInfo.slope > 0 ? '+' : ''}{hoverInfo.slope}%</strong>
+          </div>
+        </div>
+      )}
 
       {/* ── Style switcher ── */}
       <div className="absolute top-2 right-2 z-10 flex gap-1 rounded-lg bg-white/90 p-1 shadow backdrop-blur-sm">

@@ -1,6 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
+import { useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { format } from 'date-fns';
 import { da } from 'date-fns/locale';
@@ -37,6 +38,7 @@ export default function ActivityDetailPage() {
   const { user, isAdmin } = useAuth();
   const queryClient = useQueryClient();
   const router = useRouter();
+  const [hoveredDistKm, setHoveredDistKm] = useState<number | null>(null);
 
 const { data: activityData, isLoading, refetch: refetchActivity } = useActivitiesControllerFindOne(id);
   const { data: commentsData, refetch: refetchComments } = useCommentsControllerGetForActivity(id);
@@ -382,6 +384,8 @@ const { data: activityData, isLoading, refetch: refetchActivity } = useActivitie
                 <RouteMap
                   trackPoints={routeData.trackPoints}
                   boundingBox={routeData.boundingBox}
+                  onHoverDistKm={setHoveredDistKm}
+                  hoveredDistKm={hoveredDistKm}
                 />
 
                 {/* Elevation chart */}
@@ -391,6 +395,8 @@ const { data: activityData, isLoading, refetch: refetchActivity } = useActivitie
                   elevationLossM={routeData.elevationLossM}
                   maxElevationM={routeData.maxElevationM}
                   minElevationM={routeData.minElevationM}
+                  hoveredDistKm={hoveredDistKm}
+                  onHoverDistKm={(km) => setHoveredDistKm(km)}
                 />
 
                 {/* GPX download */}
