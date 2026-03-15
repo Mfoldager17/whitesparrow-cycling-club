@@ -20,7 +20,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div className="min-h-screen flex flex-col">
             <Navbar />
             <main className="flex-1 pb-16 sm:pb-0">{children}</main>
-            <footer className="border-t border-gray-200 py-8 text-center text-sm text-gray-500 mb-16 sm:mb-0">
+            <footer className="bg-brand-200/50 py-8 text-center text-sm text-gray-600 mb-16 sm:mb-0">
               © {new Date().getFullYear()} Whitesparrow Cycling Club
             </footer>
             <BottomNav />

@@ -4,13 +4,13 @@ export default function HomePage() {
   return (
     <div className="flex flex-col">
       {/* Hero */}
-      <section className="relative flex flex-col items-center justify-center py-32 px-4 text-center bg-gradient-to-b from-brand-700 to-brand-900 text-white">
-        <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight mb-4">
+      <section className="relative flex flex-col items-center justify-center py-32 px-4 text-center bg-white">
+        <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight mb-4 text-brand-800">
           Whitesparrow
           <br />
           Cycling Club
         </h1>
-        <p className="text-lg sm:text-xl text-brand-200 max-w-xl mb-8">
+        <p className="text-lg sm:text-xl text-gray-600 max-w-xl mb-8">
           Din klub. Din tur. Dit fællesskab. Find næste tur, tilmeld dig og
           del oplevelserne med dine medcyklister.
         </p>
@@ -18,7 +18,7 @@ export default function HomePage() {
           <Link href="/activities" className="btn-primary px-6 py-3 text-base">
             Se aktiviteter
           </Link>
-          <Link href="/register" className="btn-secondary bg-white/10 border-white/30 text-white hover:bg-white/20 px-6 py-3 text-base">
+          <Link href="/register" className="btn-secondary px-6 py-3 text-base">
             Bliv medlem
           </Link>
         </div>
