@@ -439,7 +439,7 @@ const { data: activityData, isLoading, refetch: refetchActivity } = useActivitie
                         className="flex items-center gap-2.5 w-full px-3.5 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
                       >
                         <span className="text-base">🗺️</span>
-                        {savedRoute && !routeData ? 'Skift gemt rute' : 'Tilknyt gemt rute'}
+                        {savedRoute ? 'Skift gemt rute' : 'Tilknyt gemt rute'}
                       </button>
 
                       <button
@@ -484,7 +484,7 @@ const { data: activityData, isLoading, refetch: refetchActivity } = useActivitie
                         {routeData ? 'Udskift GPX-rute' : 'Upload GPX-rute'}
                       </button>
 
-                      {savedRoute && !routeData && (
+                      {savedRoute && (
                         <>
                           <div className="border-t border-gray-100 my-0.5" />
                           <button
@@ -623,20 +623,36 @@ const { data: activityData, isLoading, refetch: refetchActivity } = useActivitie
                   onHoverDistKm={(km) => setHoveredDistKm(km)}
                 />
 
-                {/* GPX download (only available for GPX-uploaded routes) */}
-                {routeData && (
+                {/* GPX download */}
+                {(routeData || savedRoute) && (
                   <button
                     onClick={async () => {
                       try {
                         const token = localStorage.getItem('accessToken');
-                        const res = await fetch(
-                          `${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'}/activities/${id}/route/download-url`,
-                          { headers: token ? { Authorization: `Bearer ${token}` } : {} },
-                        );
-                        if (!res.ok) return;
-                        const json = await res.json() as { data?: { url: string }; url?: string };
-                        const url = json.data?.url ?? json.url;
-                        if (url) window.open(url, '_blank');
+                        const apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+                        if (routeData) {
+                          // Uploaded GPX — fetch presigned MinIO URL and open
+                          const res = await fetch(`${apiBase}/activities/${id}/route/download-url`, {
+                            headers: token ? { Authorization: `Bearer ${token}` } : {},
+                          });
+                          if (!res.ok) return;
+                          const json = await res.json() as { data?: { url: string }; url?: string };
+                          const url = json.data?.url ?? json.url;
+                          if (url) window.open(url, '_blank');
+                        } else if (savedRoute) {
+                          // Saved route — generate GPX on-the-fly and trigger download
+                          const res = await fetch(`${apiBase}/routes/${savedRoute.id}/export.gpx`, {
+                            headers: token ? { Authorization: `Bearer ${token}` } : {},
+                          });
+                          if (!res.ok) return;
+                          const blob = await res.blob();
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = `${savedRoute.name.replace(/[^\w\s-]/g, '').trim() || 'rute'}.gpx`;
+                          a.click();
+                          URL.revokeObjectURL(url);
+                        }
                       } catch {
                         // ignore
                       }

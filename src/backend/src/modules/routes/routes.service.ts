@@ -8,6 +8,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { User } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service';
+import { GpxService } from '../activities/gpx.service';
 import {
   CreateRouteDto,
   PlanRouteDto,
@@ -57,6 +58,7 @@ export class RoutesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
+    private readonly gpx: GpxService,
   ) {}
 
   // ─── ORS profile mapping ──────────────────────────────────────────────────
@@ -264,6 +266,14 @@ export class RoutesService {
       throw new ForbiddenException('Kun ejeren eller en admin kan slette denne rute');
 
     await this.prisma.savedRoute.delete({ where: { id } });
+  }
+
+  async exportGpx(id: string): Promise<{ name: string; buffer: Buffer }> {
+    const r = await this.prisma.savedRoute.findUnique({ where: { id } });
+    if (!r) throw new NotFoundException('Rute ikke fundet');
+    const trackPoints = r.trackPoints as unknown as TrackPoint[];
+    const buffer = this.gpx.generate(r.name, trackPoints);
+    return { name: r.name, buffer };
   }
 
   // ─── Helpers ──────────────────────────────────────────────────────────────
