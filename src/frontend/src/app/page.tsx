@@ -1,16 +1,13 @@
+import Image from 'next/image';
 import Link from 'next/link';
 
 export default function HomePage() {
   return (
     <div className="flex flex-col">
       {/* Hero */}
-      <section className="relative flex flex-col items-center justify-center py-32 px-4 text-center bg-white">
-        <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight mb-4 text-brand-800">
-          Whitesparrow
-          <br />
-          Cycling Club
-        </h1>
-        <p className="text-lg sm:text-xl text-gray-600 max-w-xl mb-8">
+      <section className="relative flex flex-col items-center justify-center py-16 pt-32 px-4 text-center bg-white gap-2">
+        <Image src="/whitesparrow.webp" width={400} height={200} alt="Hero Image" className=" w-auto -mt-40" />
+        <p className="text-lg sm:text-xl text-gray-600 max-w-xl mb-8 -mt-24">
           Din klub. Din tur. Dit fællesskab. Find næste tur, tilmeld dig og
           del oplevelserne med dine medcyklister.
         </p>
@@ -25,7 +22,7 @@ export default function HomePage() {
       </section>
 
       {/* Features */}
-      <section className="max-w-7xl mx-auto px-4 py-20 grid grid-cols-1 sm:grid-cols-3 gap-8">
+      <section className="max-w-7xl mx-auto px-4 py-12 grid grid-cols-1 sm:grid-cols-3 gap-8 ">
         {[
           {
             icon: '📅',

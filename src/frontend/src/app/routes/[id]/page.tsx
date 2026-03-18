@@ -65,7 +65,7 @@ export default function RouteDetailPage() {
 
   async function handleDelete() {
     if (!confirm(`Slet ruten "${route.name}"?`)) return;
-    await deleteRoute(id);
+    await deleteRoute({ id });
     await queryClient.invalidateQueries({ queryKey: getRoutesControllerFindAllQueryKey() });
     router.push('/routes');
   }
@@ -126,9 +126,9 @@ export default function RouteDetailPage() {
         {isOwner && !editing && (
           <div className="flex gap-2 shrink-0">
             <button
-              onClick={startEdit}
+              onClick={() => router.push(`/routes/${id}/edit`)}
               className="btn-secondary text-sm"
-              title="Rediger navn og beskrivelse"
+              title="Rediger rute og waypoints"
             >
               Rediger
             </button>

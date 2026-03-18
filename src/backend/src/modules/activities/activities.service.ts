@@ -189,6 +189,15 @@ export class ActivitiesService {
       throw new ForbiddenException('Not allowed to edit this activity');
     }
 
+    // When linking a saved route, clear any previously uploaded GPX route data
+    if (dto.savedRouteId !== undefined && dto.savedRouteId !== null) {
+      const existing = await this.prisma.routeData.findUnique({ where: { activityId: id } });
+      if (existing) {
+        await this.storage.delete(existing.gpxFileKey).catch(() => {});
+        await this.prisma.routeData.delete({ where: { activityId: id } });
+      }
+    }
+
     const updated = await this.prisma.activity.update({
       where: { id },
       data: {
@@ -267,7 +276,8 @@ export class ActivitiesService {
 
     const parsed = this.gpx.parse(file.buffer);
 
-    const gpxFileKey = `routes/${activityId}/${Date.now()}.gpx`;
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const gpxFileKey = `routes/${activityId}/${timestamp}.gpx`;
     await this.storage.upload(gpxFileKey, file.buffer, 'application/gpx+xml');
 
     // Delete any previous route data for this activity

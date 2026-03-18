@@ -8,6 +8,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { User } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service';
+import { GpxService } from '../activities/gpx.service';
 import {
   CreateRouteDto,
   PlanRouteDto,
@@ -57,6 +58,7 @@ export class RoutesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
+    private readonly gpx: GpxService,
   ) {}
 
   // ─── ORS profile mapping ──────────────────────────────────────────────────
@@ -253,7 +255,40 @@ export class RoutesService {
     if (r.createdBy !== user.id && user.role !== 'admin')
       throw new ForbiddenException('Kun ejeren eller en admin kan redigere denne rute');
 
-    const updated = await this.prisma.savedRoute.update({ where: { id }, data: dto });
+    // If new waypoints provided, re-plan the route via ORS
+    if (dto.waypoints && dto.waypoints.length >= 2) {
+      const surface = (dto.surface ?? r.surface) as RouteSurface;
+      const trackPoints = await this.callOrs(dto.waypoints, surface);
+      const stats = this.computeStats(trackPoints);
+      const updated = await this.prisma.savedRoute.update({
+        where: { id },
+        data: {
+          ...(dto.name && { name: dto.name }),
+          ...(dto.description !== undefined && { description: dto.description ?? null }),
+          surface,
+          /* eslint-disable @typescript-eslint/no-explicit-any */
+          waypoints: dto.waypoints as any,
+          trackPoints: trackPoints as any,
+          boundingBox: stats.boundingBox as any,
+          /* eslint-enable @typescript-eslint/no-explicit-any */
+          totalDistanceKm: stats.totalDistanceKm,
+          elevationGainM: stats.elevationGainM,
+          elevationLossM: stats.elevationLossM,
+          maxElevationM: stats.maxElevationM,
+          minElevationM: stats.minElevationM,
+        },
+      });
+      return this.toDetailDto(updated, trackPoints);
+    }
+
+    const updated = await this.prisma.savedRoute.update({
+      where: { id },
+      data: {
+        ...(dto.name && { name: dto.name }),
+        ...(dto.description !== undefined && { description: dto.description ?? null }),
+        ...(dto.surface && { surface: dto.surface }),
+      },
+    });
     return this.toDetailDto(updated, updated.trackPoints as unknown as TrackPoint[]);
   }
 
@@ -264,6 +299,14 @@ export class RoutesService {
       throw new ForbiddenException('Kun ejeren eller en admin kan slette denne rute');
 
     await this.prisma.savedRoute.delete({ where: { id } });
+  }
+
+  async exportGpx(id: string): Promise<{ name: string; buffer: Buffer }> {
+    const r = await this.prisma.savedRoute.findUnique({ where: { id } });
+    if (!r) throw new NotFoundException('Rute ikke fundet');
+    const trackPoints = r.trackPoints as unknown as TrackPoint[];
+    const buffer = this.gpx.generate(r.name, trackPoints);
+    return { name: r.name, buffer };
   }
 
   // ─── Helpers ──────────────────────────────────────────────────────────────

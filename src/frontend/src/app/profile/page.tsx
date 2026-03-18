@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -8,6 +9,86 @@ import { PageSpinner } from '@/components/ui/Spinner';
 import { useUsersControllerGetMe, useUsersControllerUpdateMe } from '@/api/generated/users/users';
 import StravaConnect from '@/components/strava/StravaConnect';
 import RidewithgpsConnect from '@/components/ridewithgps/RidewithgpsConnect';
+import { apiClient } from '@/api/axios-instance';
+
+function SendToGarminTest() {
+  const [routes, setRoutes] = useState<{ id: string; name: string; distance: number }[]>([]);
+  const [loadingRoutes, setLoadingRoutes] = useState(false);
+  const [routeId, setRouteId] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<string | null>(null);
+
+  async function loadRoutes() {
+    setLoadingRoutes(true);
+    try {
+      const res = await apiClient.get<unknown>('/ridewithgps/routes');
+      const list = ((res.data as any)?.data ?? res.data) as { id: string; name: string; distance: number }[];
+      setRoutes(Array.isArray(list) ? list : []);
+    } catch {
+      setRoutes([]);
+    } finally {
+      setLoadingRoutes(false);
+    }
+  }
+
+  async function handleSend() {
+    if (!routeId) return;
+    setLoading(true);
+    setResult(null);
+    try {
+      const res = await apiClient.post<unknown>(`/ridewithgps/routes/${routeId}/request-sync`);
+      setResult(JSON.stringify((res.data as any)?.data ?? res.data, null, 2));
+    } catch (err: any) {
+      const data = err?.response?.data;
+      setResult('Fejl: ' + JSON.stringify(data ?? err?.message ?? err, null, 2));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex gap-2">
+        {routes.length === 0 ? (
+          <button
+            onClick={loadRoutes}
+            disabled={loadingRoutes}
+            className="btn-secondary text-sm disabled:opacity-50"
+          >
+            {loadingRoutes ? 'Henter ruter…' : 'Hent RWGPS-ruter'}
+          </button>
+        ) : (
+          <>
+            <select
+              value={routeId}
+              onChange={(e) => setRouteId(e.target.value)}
+              className="input flex-1 text-sm"
+            >
+              <option value="">Vælg en rute…</option>
+              {routes.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.name} ({(r.distance / 1000).toFixed(1)} km)
+                </option>
+              ))}
+            </select>
+            <button
+              onClick={handleSend}
+              disabled={loading || !routeId}
+              className="btn-primary text-sm disabled:opacity-50"
+            >
+              {loading ? 'Sender…' : 'Request Sync'}
+            </button>
+          </>
+        )}
+      </div>
+      {result && (
+        <pre className="text-xs bg-gray-50 border border-gray-200 rounded-lg p-3 overflow-x-auto whitespace-pre-wrap break-all">
+          {result}
+        </pre>
+      )}
+    </div>
+  );
+}
 
 const schema = z.object({
   fullName: z.string().min(2),
@@ -102,6 +183,11 @@ export default function ProfilePage() {
 
       <div className="mt-6">
         <RidewithgpsConnect />
+      </div>
+
+      <div className="mt-6 card space-y-3">
+        <h2 className="font-semibold text-gray-900 text-sm">🧪 Test: Send RWGPS-rute til Garmin</h2>
+        <SendToGarminTest />
       </div>
 
       <div className="mt-6 sm:hidden">

@@ -192,7 +192,7 @@ export function BottomNav() {
       </div>
 
       {/* Bottom navigation bar */}
-      <nav className="sm:hidden fixed bottom-0 inset-x-0 z-40 bg-brand-200/50 backdrop-blur-md border-t border-brand-200">
+      <nav className="sm:hidden fixed bottom-0 inset-x-0 z-40 bg-brand-50/70 backdrop-blur-md border-t border-brand-200">
         <div className="flex h-16 items-stretch">
           {items.map(({ href, label, icon: Icon }) => {
             const isActive = href === '/' ? pathname === '/' : pathname.startsWith(href);

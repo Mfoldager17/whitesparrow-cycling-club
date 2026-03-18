@@ -9,8 +9,10 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Res,
   UseGuards,
 } from '@nestjs/common';
+import { Response } from 'express';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -97,5 +99,21 @@ export class RoutesController {
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<void> {
     return this.routesService.delete(user, id);
+  }
+
+  @Get(':id/export.gpx')
+  @ApiOperation({ summary: 'Download a saved route as a GPX file' })
+  async exportGpx(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Res() res: Response,
+  ): Promise<void> {
+    const { name, buffer } = await this.routesService.exportGpx(id);
+    const filename = `${name.replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '_') || 'route'}.gpx`;
+    res.set({
+      'Content-Type': 'application/gpx+xml',
+      'Content-Disposition': `attachment; filename="${filename}"`,
+      'Content-Length': buffer.length.toString(),
+    });
+    res.send(buffer);
   }
 }
