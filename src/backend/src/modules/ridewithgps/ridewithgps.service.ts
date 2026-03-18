@@ -37,6 +37,12 @@ export interface RwgpsRoute {
   elevation_gain: number; // meters
 }
 
+export interface ConnectedService {
+  name: string;
+  connected: boolean;
+  description?: string;
+}
+
 @Injectable()
 export class RidewithgpsService {
   private readonly logger = new Logger(RidewithgpsService.name);
@@ -201,6 +207,44 @@ export class RidewithgpsService {
 
     const body = (await res.json()) as RwgpsRoutesResponse;
     return body.results ?? [];
+  }
+
+  /** Fetch connected services/devices from RideWithGPS settings page */
+  async getConnectedServices(userId: string): Promise<ConnectedService[]> {
+    const token = await this.prisma.oAuthToken.findUnique({
+      where: { userId_platform: { userId, platform: 'rwgps' } },
+    });
+    if (!token) throw new NotFoundException('No RideWithGPS connection found');
+
+    const res = await fetch('https://ridewithgps.com/settings/connected_services', {
+      headers: {
+        Authorization: `Bearer ${token.accessToken}`,
+        Accept: 'text/html,application/xhtml+xml',
+        'User-Agent': 'Mozilla/5.0 (compatible; WhiteSparrow/1.0)',
+      },
+    });
+
+    if (!res.ok) {
+      throw new BadRequestException(
+        `Failed to fetch RideWithGPS connected services: HTTP ${res.status}`,
+      );
+    }
+
+    const html = await res.text();
+
+    const match = html.match(
+      /analyticsUserProperties[^}]+"connected_services":\s*(\[[^\]]+\])/,
+    );
+
+    if (!match) {
+      this.logger.warn(`No connected_services found in RWGPS page for user ${userId}`);
+      return [];
+    }
+
+    const services = JSON.parse(match[1]) as string[];
+    this.logger.log(`Found ${services.length} connected services for user ${userId}: ${services.join(', ')}`);
+
+    return services.map((name) => ({ name, connected: true }));
   }
 
   /** Download a single RideWithGPS route as a GPX buffer */

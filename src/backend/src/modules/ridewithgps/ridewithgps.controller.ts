@@ -65,6 +65,15 @@ export class RidewithgpsController {
     }
   }
 
+  /** Scrape connected services/devices from RideWithGPS settings page */
+  @Get('connected-services')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Get connected devices/services from RideWithGPS' })
+  @ApiResponse({ status: 200, description: 'List of connected services scraped from RideWithGPS settings page' })
+  connectedServices(@CurrentUser() user: User) {
+    return this.rwgps.getConnectedServices(user.id);
+  }
+
   /** Current user's RideWithGPS connection status */
   @Get('status')
   @UseGuards(JwtAuthGuard)

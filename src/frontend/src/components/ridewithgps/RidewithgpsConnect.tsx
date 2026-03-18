@@ -9,16 +9,58 @@ interface RwgpsStatus {
   userAvatar?: string;
 }
 
+interface ConnectedService {
+  name: string;
+  connected: boolean;
+}
+
+const SERVICE_ICONS: Record<string, string> = {
+  strava: '🟠',
+  garmin: '🟦',
+  wahoo: '⚫',
+  komoot: '🟢',
+  apple: '⬛',
+  suunto: '🔵',
+  polar: '🔴',
+  coros: '⚪',
+};
+
+function serviceIcon(name: string) {
+  return SERVICE_ICONS[name.toLowerCase()] ?? '🔗';
+}
+
+function serviceLabel(name: string) {
+  return name.charAt(0).toUpperCase() + name.slice(1);
+}
+
 export default function RidewithgpsConnect() {
   const [status, setStatus] = useState<RwgpsStatus | null>(null);
   const [disconnecting, setDisconnecting] = useState(false);
+  const [connectedServices, setConnectedServices] = useState<ConnectedService[] | null>(null);
+  const [loadingServices, setLoadingServices] = useState(false);
 
   async function fetchStatus() {
     try {
       const res = await apiClient.get<{ data: RwgpsStatus }>('/ridewithgps/status');
-      setStatus((res.data as any)?.data ?? res.data);
+      const s = (res.data as any)?.data ?? res.data;
+      setStatus(s);
+      if (s?.connected) {
+        void fetchConnectedServices();
+      }
     } catch {
       setStatus({ connected: false });
+    }
+  }
+
+  async function fetchConnectedServices() {
+    setLoadingServices(true);
+    try {
+      const res = await apiClient.get<{ data: ConnectedService[] }>('/ridewithgps/connected-services');
+      setConnectedServices((res.data as any)?.data ?? res.data);
+    } catch {
+      setConnectedServices([]);
+    } finally {
+      setLoadingServices(false);
     }
   }
 
@@ -42,6 +84,7 @@ export default function RidewithgpsConnect() {
     try {
       await apiClient.delete('/ridewithgps/disconnect');
       setStatus({ connected: false });
+      setConnectedServices(null);
     } finally {
       setDisconnecting(false);
     }
@@ -76,29 +119,55 @@ export default function RidewithgpsConnect() {
       </div>
 
       {status.connected ? (
-        <div className="flex items-center gap-3">
-          {status.userAvatar && (
-            <img
-              src={status.userAvatar}
-              alt=""
-              className="w-10 h-10 rounded-full object-cover border border-gray-200"
-            />
-          )}
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-gray-900 truncate">
-              {status.userName}
-            </p>
-            <p className="text-xs text-gray-500">
-              Din RideWithGPS-konto er tilknyttet.
-            </p>
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            {status.userAvatar && (
+              <img
+                src={status.userAvatar}
+                alt=""
+                className="w-10 h-10 rounded-full object-cover border border-gray-200"
+              />
+            )}
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-gray-900 truncate">
+                {status.userName}
+              </p>
+              <p className="text-xs text-gray-500">
+                Din RideWithGPS-konto er tilknyttet.
+              </p>
+            </div>
+            <button
+              onClick={handleDisconnect}
+              disabled={disconnecting}
+              className="btn-danger text-xs py-1.5 px-3 shrink-0"
+            >
+              {disconnecting ? 'Frakobler…' : 'Frakobl'}
+            </button>
           </div>
-          <button
-            onClick={handleDisconnect}
-            disabled={disconnecting}
-            className="btn-danger text-xs py-1.5 px-3 shrink-0"
-          >
-            {disconnecting ? 'Frakobler…' : 'Frakobl'}
-          </button>
+
+          {/* Connected devices/services */}
+          <div>
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
+              Forbundne enheder
+            </p>
+            {loadingServices ? (
+              <p className="text-xs text-gray-400">Henter enheder…</p>
+            ) : connectedServices && connectedServices.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {connectedServices.map((s) => (
+                  <span
+                    key={s.name}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700"
+                  >
+                    <span aria-hidden>{serviceIcon(s.name)}</span>
+                    {serviceLabel(s.name)}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-gray-400">Ingen forbundne enheder fundet.</p>
+            )}
+          </div>
         </div>
       ) : (
         <div className="space-y-3">
