@@ -21,7 +21,7 @@ export function Navbar() {
   const pathname = usePathname();
 
   return (
-    <header className={clsx(user ? 'hidden sm:block' : 'block', 'sticky top-0 z-40 bg-brand-200/50 backdrop-blur-md')}>
+    <header className={clsx(user ? 'hidden sm:block' : 'block', 'sticky top-0 z-40 bg-brand-50/70 backdrop-blur-md')}>
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2 font-bold text-brand-700 text-lg">

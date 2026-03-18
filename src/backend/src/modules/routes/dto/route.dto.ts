@@ -64,6 +64,14 @@ export class UpdateRouteDto {
   @IsString()
   @IsOptional()
   description?: string;
+
+  @ApiProperty({ type: [WaypointDto], required: false })
+  @IsOptional()
+  waypoints?: WaypointDto[];
+
+  @ApiProperty({ enum: ['auto', 'paved', 'unpaved'], required: false })
+  @IsOptional()
+  surface?: RouteSurface;
 }
 
 // ─── Response shapes ─────────────────────────────────────────────────────────

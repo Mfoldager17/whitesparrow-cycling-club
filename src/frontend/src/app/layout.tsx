@@ -19,8 +19,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Providers>
           <div className="min-h-screen flex flex-col">
             <Navbar />
-            <main className="flex-1 pb-16 sm:pb-0">{children}</main>
-            <footer className="bg-brand-200/50 py-8 text-center text-sm text-gray-600 mb-16 sm:mb-0">
+            <main className="flex-1 pb-16 sm:pb-0 bg-white">{children}</main>
+            <footer className="bg-brand-50/70 py-8 text-center text-sm text-gray-600 mb-16 sm:mb-0">
               © {new Date().getFullYear()} Whitesparrow Cycling Club
             </footer>
             <BottomNav />

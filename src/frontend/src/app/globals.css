@@ -30,7 +30,7 @@
     @apply block text-sm font-medium text-gray-700 mb-1;
   }
   .card {
-    @apply rounded-2xl bg-white shadow-sm border border-gray-100 p-6;
+    @apply rounded-2xl bg-white shadow-sm border border-gray-100 bg-brand-50/40 p-6;
   }
   .badge {
     @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
