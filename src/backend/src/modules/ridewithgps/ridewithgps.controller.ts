@@ -125,36 +125,4 @@ export class RidewithgpsController {
     return this.activities.uploadRoute(user, activityId, fakeFile);
   }
 
-  /**
-   * Proxy a "request sync" call to RideWithGPS (pushes route to connected Garmin).
-   * The RWGPS access token is fetched from the DB — never exposed to the client.
-   */
-  @Post('routes/:routeId/request-sync')
-  @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Request sync of a RideWithGPS route to Garmin' })
-  @ApiResponse({ status: 201 })
-  async requestSync(
-    @CurrentUser() user: User,
-    @Param('routeId') routeId: string,
-  ) {
-    const token = await this.prisma.oAuthToken.findUnique({
-      where: { userId_platform: { userId: user.id, platform: 'rwgps' } },
-    });
-    if (!token) throw new NotFoundException('No RideWithGPS connection found');
-
-    const res = await fetch(`https://ridewithgps.com/routes/${routeId}/request_sync`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token.accessToken}`,
-      },
-      body: JSON.stringify({ service_name: 'GarminConnect' }),
-    });
-
-    const text = await res.text();
-    let body: unknown;
-    try { body = JSON.parse(text); } catch { body = text; }
-
-    return { status: res.status, ok: res.ok, body };
-  }
 }
