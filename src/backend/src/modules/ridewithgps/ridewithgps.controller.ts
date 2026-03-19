@@ -73,6 +73,20 @@ export class RidewithgpsController {
     return this.rwgps.getStatus(user.id);
   }
 
+  /**
+   * Establish a RideWithGPS session for the current user.
+   * Calls the RWGPS /users/current.json endpoint with the stored Bearer token so
+   * that RWGPS sets its session cookie.  The frontend calls this endpoint before
+   * rendering any RWGPS iframe embeds, ensuring the user is transparently
+   * authenticated with RideWithGPS without a separate login step.
+   */
+  @Get('session')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Establish RideWithGPS session for iframe embeds' })
+  session(@CurrentUser() user: User) {
+    return this.rwgps.getSession(user.id);
+  }
+
   /** Disconnect — delete stored token */
   @Delete('disconnect')
   @UseGuards(JwtAuthGuard)

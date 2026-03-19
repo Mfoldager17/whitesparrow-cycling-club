@@ -180,6 +180,38 @@ export class RidewithgpsService {
     await this.prisma.oAuthToken.deleteMany({ where: { userId, platform: 'rwgps' } });
   }
 
+  /**
+   * Call the RWGPS /users/current.json endpoint with the stored Bearer token.
+   * RWGPS responds with `set-cookie` headers that establish a session for the
+   * ridewithgps.com domain, enabling authenticated iframe embeds.
+   * Returns the current user data from RWGPS so the frontend knows the session
+   * was established successfully.
+   */
+  async getSession(userId: string): Promise<{ externalUserId: string; userName: string | null }> {
+    const token = await this.prisma.oAuthToken.findUnique({
+      where: { userId_platform: { userId, platform: 'rwgps' } },
+    });
+    if (!token) throw new NotFoundException('No RideWithGPS connection found');
+
+    const url = new URL('https://ridewithgps.com/users/current.json');
+    url.searchParams.set('apikey', this.clientId);
+    url.searchParams.set('version', '2');
+
+    const res = await fetch(url.toString(), {
+      headers: { Authorization: `Bearer ${token.accessToken}` },
+    });
+
+    if (!res.ok) {
+      throw new BadRequestException('Failed to establish RideWithGPS session');
+    }
+
+    const body = (await res.json()) as { user?: { id: number; name?: string } };
+    return {
+      externalUserId: token.externalUserId,
+      userName: body.user?.name ?? token.userName,
+    };
+  }
+
   /** List the user's RideWithGPS routes */
   async listRoutes(userId: string): Promise<RwgpsRoute[]> {
     const token = await this.prisma.oAuthToken.findUnique({

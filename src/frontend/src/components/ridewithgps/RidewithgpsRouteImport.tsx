@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { apiClient } from '@/api/axios-instance';
+import RidewithgpsIframeEmbed from './RidewithgpsIframeEmbed';
 
 interface RwgpsRoute {
   id: number;
@@ -26,6 +27,7 @@ export default function RidewithgpsRouteImport({ activityId, onImported, mode = 
   const [importing, setImporting] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
+  const [previewRouteId, setPreviewRouteId] = useState<number | null>(null);
 
   useEffect(() => {
     apiClient
@@ -100,13 +102,24 @@ export default function RidewithgpsRouteImport({ activityId, onImported, mode = 
                   </div>
                 </div>
               </div>
-              <button
-                onClick={() => handleImport(r.id)}
-                disabled={importing !== null}
-                className="btn-primary text-sm w-full disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {importing === r.id ? 'Importerer…' : 'Brug denne'}
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setPreviewRouteId(previewRouteId === r.id ? null : r.id)}
+                  className="btn-secondary text-xs py-1 px-2.5 shrink-0"
+                >
+                  {previewRouteId === r.id ? 'Skjul kort' : 'Vis kort'}
+                </button>
+                <button
+                  onClick={() => handleImport(r.id)}
+                  disabled={importing !== null}
+                  className="btn-primary text-sm flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {importing === r.id ? 'Importerer…' : 'Brug denne'}
+                </button>
+              </div>
+              {previewRouteId === r.id && (
+                <RidewithgpsIframeEmbed routeId={r.id} />
+              )}
             </li>
           ))}
         </ul>
