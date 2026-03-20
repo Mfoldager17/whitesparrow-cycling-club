@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
@@ -220,5 +221,64 @@ export class RidewithgpsService {
 
     if (!res.ok) throw new BadRequestException('Failed to download GPX from RideWithGPS');
     return Buffer.from(await res.arrayBuffer());
+  }
+
+  /** Export a saved route from the website to RideWithGPS */
+  async exportRouteToRwgps(userId: string, savedRouteId: string): Promise<{ rwgpsRouteId: number; url: string }> {
+    const token = await this.prisma.oAuthToken.findUnique({
+      where: { userId_platform: { userId, platform: 'rwgps' } },
+    });
+    if (!token) throw new NotFoundException('No RideWithGPS connection found');
+
+    const savedRoute = await this.prisma.savedRoute.findUnique({ where: { id: savedRouteId } });
+    if (!savedRoute) throw new NotFoundException('Saved route not found');
+    if (savedRoute.createdBy !== userId) throw new ForbiddenException('Only the route owner can export this route');
+
+    const rawPoints = savedRoute.trackPoints as Array<{ lat: number; lng: number; ele: number; distanceKm: number }>;
+
+    const trackPoints = rawPoints.map((p) => ({
+      x: p.lng,
+      y: p.lat,
+      e: p.ele,
+      d: Math.round(p.distanceKm * 1000 * 1000) / 1000, // convert km to meters, rounded to 3 decimal places
+      S: 0,
+      R: 3,
+    }));
+
+    const payload = {
+      route: {
+        name: savedRoute.name,
+        description: savedRoute.description ?? '',
+        visibility: 0,
+        user_id: Number(token.externalUserId),
+        track_points: trackPoints,
+        course_points: [],
+        points_of_interest: [],
+        poi_ids: [],
+        tag_names: [],
+        planner_options: 0,
+      },
+    };
+
+    const res = await fetch('https://ridewithgps.com/routes.json', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token.accessToken}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const rawText = await res.text();
+    if (!res.ok) {
+      throw new BadRequestException(`RWGPS API error ${res.status}: ${rawText.slice(0, 200)}`);
+    }
+
+    const result = JSON.parse(rawText) as { route: { id: number } };
+    const rwgpsRouteId = result.route.id;
+    return {
+      rwgpsRouteId,
+      url: `https://ridewithgps.com/routes/${rwgpsRouteId}`,
+    };
   }
 }
