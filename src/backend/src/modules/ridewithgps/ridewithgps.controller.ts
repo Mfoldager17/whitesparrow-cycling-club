@@ -7,6 +7,7 @@ import {
   Logger,
   NotFoundException,
   Param,
+  ParseUUIDPipe,
   Post,
   Query,
   Res,
@@ -123,6 +124,21 @@ export class RidewithgpsController {
     };
 
     return this.activities.uploadRoute(user, activityId, fakeFile);
+  }
+
+  /**
+   * Export a saved route from the website to RideWithGPS.
+   * Converts the route's track points to RWGPS format and POSTs to the RWGPS API.
+   */
+  @Post('export/:savedRouteId')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Export a saved route to RideWithGPS' })
+  @ApiResponse({ status: 201 })
+  exportRoute(
+    @CurrentUser() user: User,
+    @Param('savedRouteId', ParseUUIDPipe) savedRouteId: string,
+  ) {
+    return this.rwgps.exportRouteToRwgps(user.id, savedRouteId);
   }
 
 }

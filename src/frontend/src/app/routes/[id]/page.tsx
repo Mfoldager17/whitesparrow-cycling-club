@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
@@ -15,6 +15,7 @@ import {
   getRoutesControllerFindAllQueryKey,
   getRoutesControllerFindOneQueryKey,
 } from '@/api/generated/routes/routes';
+import { apiClient } from '@/api/axios-instance';
 import { useAuth } from '@/contexts/AuthContext';
 
 const RouteMap = dynamic(() => import('@/components/activities/RouteMap'), { ssr: false });
@@ -34,10 +35,24 @@ export default function RouteDetailPage() {
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState('');
   const [editDesc, setEditDesc] = useState('');
+  const [exportResult, setExportResult] = useState<{ url: string } | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const [rwgpsConnected, setRwgpsConnected] = useState(false);
 
   const { data: routeData, isLoading } = useRoutesControllerFindOne(id);
   const { mutateAsync: updateRoute, isPending: updating } = useRoutesControllerUpdate();
   const { mutateAsync: deleteRoute, isPending: deleting } = useRoutesControllerDelete();
+
+  useEffect(() => {
+    apiClient
+      .get<{ data: { connected: boolean } } | { connected: boolean }>('/ridewithgps/status')
+      .then((res) => {
+        const connected = (res.data as any)?.data?.connected ?? (res.data as any)?.connected ?? false;
+        setRwgpsConnected(connected);
+      })
+      .catch(() => setRwgpsConnected(false));
+  }, []);
 
   if (isLoading) return <PageSpinner />;
 
@@ -68,6 +83,24 @@ export default function RouteDetailPage() {
     await deleteRoute({ id });
     await queryClient.invalidateQueries({ queryKey: getRoutesControllerFindAllQueryKey() });
     router.push('/routes');
+  }
+
+  async function handleExportToRwgps() {
+    setExportResult(null);
+    setExportError(null);
+    setExporting(true);
+    try {
+      const res = await apiClient.post<{ data: { url: string; rwgpsRouteId: number } } | { url: string; rwgpsRouteId: number }>(
+        `/ridewithgps/export/${id}`,
+      );
+      const data = (res.data as any)?.data ?? res.data;
+      setExportResult({ url: data.url });
+    } catch (err: any) {
+      const msg = err?.response?.data?.message ?? err?.message ?? 'Eksport fejlede';
+      setExportError(msg);
+    } finally {
+      setExporting(false);
+    }
   }
 
   return (
@@ -189,6 +222,48 @@ export default function RouteDetailPage() {
         </div>
       )}
 
+      {/* Export to RideWithGPS */}
+      {isOwner && rwgpsConnected && (
+        <div className="mt-6 rounded-lg border border-gray-200 bg-white px-4 py-4">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <svg viewBox="0 0 24 24" className="w-5 h-5 shrink-0" fill="#FB5A00" aria-hidden>
+                <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 3a7 7 0 1 1 0 14A7 7 0 0 1 12 5zm-1 3v5l4 2.5-.75-1.3L13 13V8h-2z" />
+              </svg>
+              <span className="text-sm font-medium text-gray-900">Eksporter til RideWithGPS</span>
+            </div>
+            <button
+              onClick={handleExportToRwgps}
+              disabled={exporting}
+              className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white shrink-0"
+              style={{ background: exporting ? '#ccc' : '#FB5A00' }}
+            >
+              {exporting ? 'Eksporterer…' : 'Eksporter rute'}
+            </button>
+          </div>
+
+          {exportResult && (
+            <div className="mt-3 rounded-md bg-green-50 border border-green-200 px-3 py-2 text-sm text-green-800">
+              ✅ Rute oprettet på RideWithGPS!{' '}
+              <a
+                href={exportResult.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold underline hover:text-green-900"
+              >
+                Åbn på RWGPS →
+              </a>
+            </div>
+          )}
+
+          {exportError && (
+            <div className="mt-3 rounded-md bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">
+              ❌ {exportError}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Link to use on activities */}
       <div className="mt-6 rounded-lg bg-brand-50 border border-brand-200 px-4 py-3 text-sm text-brand-800">
         💡 Du kan tilknytte denne rute til en aktivitet via rute-fanen, når du opretter eller redigerer en aktivitet.
@@ -196,3 +271,4 @@ export default function RouteDetailPage() {
     </div>
   );
 }
+
